@@ -136,11 +136,48 @@ function applyShortcutPrefsToWorkMode(prefs) {
     setRadioValue("transcribe-profile", prefs.transcribeProfile || "spoken_structured");
   }
   applyMode();
+  updateQuickStart(prefs);
+}
+
+function shortcutModeLabel(prefs) {
+  if (prefs.shortcutMode === "explain_scan") return "扫描当前页面公式并进入理解模式";
+  if (prefs.shortcutMode === "text_input") return "打开文本输入框等待粘贴";
+  const profile = prefs.transcribeProfile === "unicode_compact" ? "紧凑文本" : "结构朗读";
+  return `转译当前选中公式并输出${profile}`;
+}
+
+function primaryActionLabel(prefs) {
+  if (prefs.shortcutMode === "explain_scan") return "扫描并理解本页公式";
+  if (prefs.shortcutMode === "text_input") return "粘贴公式";
+  return "转译选中公式";
+}
+
+function updateQuickStart(prefs) {
+  const p = prefs || {
+    setupDone: false,
+    shortcutMode: "selection_transcribe",
+    transcribeProfile: "spoken_structured",
+  };
+  const setup = p.setupDone ? "已保存" : "未保存";
+  $("shortcut-summary").textContent = `Shift+Alt+M 当前默认：${shortcutModeLabel(p)}（${setup}）。`;
+  $("primary-action-btn").textContent = primaryActionLabel(p);
+  $("primary-action-btn").setAttribute("aria-label", `${primaryActionLabel(p)}。${$("shortcut-summary").textContent}`);
+}
+
+function showMainWorkflow() {
+  $("quick-start").hidden = false;
+  $("alternate-actions").hidden = false;
+}
+
+function hideMainWorkflow() {
+  $("quick-start").hidden = true;
+  $("alternate-actions").hidden = true;
 }
 
 async function showShortcutSetup(reason) {
   const prefs = await loadShortcutPrefs();
   applyShortcutPrefsToControls(prefs);
+  hideMainWorkflow();
   $("shortcut-setup").hidden = false;
   const prefix = reason || "请选择 Shift+Alt+M 的默认行为。";
   setStatus(`${prefix}保存后，下次按快捷键会直接执行所选模式。`);
@@ -149,17 +186,49 @@ async function showShortcutSetup(reason) {
 
 function hideShortcutSetup() {
   $("shortcut-setup").hidden = true;
+  showMainWorkflow();
 }
 
 function focusTextInput(message, kind) {
   setRadioValue("work-mode", "transcribe");
   applyMode();
+  $("alternate-actions").open = true;
   $("paste-fold").open = true;
   $("confirm-box").hidden = true;
   $("candidates").hidden = true;
   $("transcribe-section").hidden = true;
   setStatus(message, kind);
   $("paste-input").focus();
+}
+
+async function runPrimaryAction() {
+  const prefs = await loadShortcutPrefs();
+  applyShortcutPrefsToWorkMode(prefs);
+  hideShortcutSetup();
+  if (prefs.shortcutMode === "explain_scan") {
+    setStatus("正在按默认方式扫描当前页面公式。");
+    extractPage();
+    return;
+  }
+  if (prefs.shortcutMode === "text_input") {
+    focusTextInput("请粘贴题目、公式或化学式，然后按 Tab 到「开始转译」。");
+    return;
+  }
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [ret] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => window.getSelection().toString(),
+    });
+    const text = (ret && ret.result || "").trim();
+    if (text) {
+      startTranscription(text, "当前页面选中内容");
+    } else {
+      focusTextInput("没有检测到选中内容。请先选中公式或题目区域后再点主按钮；也可以在此处粘贴文本后开始转译。", "error");
+    }
+  } catch (e) {
+    focusTextInput("当前页面无法读取选中内容，可能是浏览器内置页面或受限页面。请复制内容后在此处手动粘贴。", "error");
+  }
 }
 
 // ---------------- 识别待确认 ----------------
@@ -227,6 +296,7 @@ async function handleIncomingText(text, sourceNote) {
 async function extractPage() {
   if (currentMode() === "transcribe") {
     // 不报错劝退，直接给一步到位的按钮（焦点落在按钮上，读屏用户听完说明按回车即可）
+    $("alternate-actions").open = true;
     $("extract-suggest").hidden = false;
     setStatus("提取公式属于理解模式（找出页面上的 LaTeX 并讲解）。焦点已在「切到理解模式并提取」按钮，按回车一步完成；若只想转译选中内容，请用「使用选中内容」。");
     $("extract-switch-btn").focus();
@@ -249,6 +319,7 @@ async function extractPage() {
   }
   const found = (results && results.result) || [];
   if (found.length === 0) {
+    $("alternate-actions").open = true;
     setStatus("当前页面没有检测到可识别的公式。请切换到包含公式的页面后再扫描；也可以先选中公式或题目区域，再点「使用选中内容」，或打开手动粘贴。焦点已在「使用选中内容」按钮。", "error");
     $("selection-btn").focus();
     return;
@@ -747,6 +818,7 @@ $("extract-switch-btn").addEventListener("click", () => {
   r.dispatchEvent(new Event("change"));
   extractPage();
 });
+$("primary-action-btn").addEventListener("click", runPrimaryAction);
 $("selection-btn").addEventListener("click", useSelection);
 $("shortcut-save-btn").addEventListener("click", async () => {
   const prefs = {
@@ -756,10 +828,12 @@ $("shortcut-save-btn").addEventListener("click", async () => {
   };
   await saveShortcutPrefs(prefs);
   applyShortcutPrefsToWorkMode(prefs);
+  updateQuickStart(prefs);
   if (prefs.setupDone) {
     hideShortcutSetup();
     setStatus("快捷键默认行为已保存。以后按 Shift+Alt+M 会直接执行所选模式。");
   } else {
+    hideShortcutSetup();
     setStatus("快捷键设置已临时应用。因为没有勾选保存，下次按 Shift+Alt+M 仍会先显示此设置。");
   }
 });
@@ -908,6 +982,9 @@ chrome.runtime.onMessage.addListener((msg) => {
 
 (async function init() {
   applyMode();
+  const prefs = await loadShortcutPrefs();
+  updateQuickStart(prefs);
+  applyShortcutPrefsToWorkMode(prefs);
   try { $("api-base-input").value = localStorage.getItem(API_KEY) || DEFAULT_API; } catch (e) { /* 忽略 */ }
   renderHistory(await loadHistory());
   // 面板打开前触发的捕获（右键/快捷键先于面板加载）

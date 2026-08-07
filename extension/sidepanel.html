@@ -58,7 +58,7 @@
     }
     .status[data-kind="error"] { border-left-color: var(--focus); background: #fdeeee; }
     .hint { font-size: 0.88rem; color: #444; margin: 0.25rem 0; }
-    #mode-box, #transcribe-profile-box, #shortcut-setup {
+    #mode-box, #transcribe-profile-box, #shortcut-setup, #quick-start {
       border: 1px solid var(--border);
       border-radius: 6px;
       margin: 0 0 0.6rem;
@@ -135,7 +135,7 @@
   <h1>数学公式无障碍学习助手</h1>
 
   <div id="status" class="status" role="status" aria-live="polite">
-    在页面上选中内容后按 Shift+Alt+M 或用右键菜单，也可以点下面的「使用选中内容」或手动粘贴。
+    先选中公式或题目区域，再按 Shift+Alt+M；也可以直接按下面的主按钮。
   </div>
 
   <section id="shortcut-setup" aria-labelledby="shortcut-setup-heading" hidden>
@@ -156,20 +156,28 @@
     <button id="shortcut-save-btn">保存快捷键设置</button>
     <button id="shortcut-cancel-btn" class="secondary">暂不设置</button>
   </section>
-  
-  <fieldset id="mode-box" aria-label="选择工作模式">
-    <legend class="hint">工作模式（转译负责“读得出来”，理解负责“学得明白”）</legend>
-    <label class="mode-opt"><input type="radio" name="work-mode" value="transcribe" checked> 转译原文，不解释</label>
-    <label class="mode-opt"><input type="radio" name="work-mode" value="explain"> 理解公式，可追问</label>
-  </fieldset>
 
-  <fieldset id="transcribe-profile-box" aria-label="选择转译风格">
-    <legend class="hint">转译风格</legend>
-    <label class="mode-opt"><input type="radio" name="transcribe-profile" value="spoken_structured" checked> 结构朗读</label>
-    <label class="mode-opt"><input type="radio" name="transcribe-profile" value="unicode_compact"> 紧凑文本</label>
-  </fieldset>
-  
-  <section aria-labelledby="capture-heading">
+  <section id="quick-start" aria-labelledby="quick-start-heading">
+    <h2 id="quick-start-heading" tabindex="-1">开始</h2>
+    <p id="shortcut-summary" class="hint">正在读取快捷键设置…</p>
+    <button id="primary-action-btn">转译选中公式</button>
+  </section>
+
+  <details id="alternate-actions">
+    <summary>换一种方式</summary>
+    <fieldset id="mode-box" aria-label="选择工作模式">
+      <legend class="hint">工作模式（转译负责“读得出来”，理解负责“学得明白”）</legend>
+      <label class="mode-opt"><input type="radio" name="work-mode" value="transcribe" checked> 转译原文，不解释</label>
+      <label class="mode-opt"><input type="radio" name="work-mode" value="explain"> 理解公式，可追问</label>
+    </fieldset>
+
+    <fieldset id="transcribe-profile-box" aria-label="选择转译风格">
+      <legend class="hint">转译风格</legend>
+      <label class="mode-opt"><input type="radio" name="transcribe-profile" value="spoken_structured" checked> 结构朗读</label>
+      <label class="mode-opt"><input type="radio" name="transcribe-profile" value="unicode_compact"> 紧凑文本</label>
+    </fieldset>
+
+    <section aria-labelledby="capture-heading">
     <h2 id="capture-heading" tabindex="-1">第一步：送入内容</h2>
     <button id="extract-btn" aria-label="扫描当前页面，提取全部公式（仅理解模式适用）">提取本页公式</button>
     <span id="extract-suggest" hidden><button id="extract-switch-btn" class="secondary" aria-label="切换到理解公式模式并立即提取本页公式">切到理解模式并提取</button></span>
@@ -198,7 +206,8 @@
       <button id="copy-only-btn" class="secondary" aria-label="只复制识别出的LaTeX，不分析">只复制</button>
       <button id="cancel-btn" class="danger" hidden aria-label="取消本次分析，停止等待">取消本次分析</button>
     </div>
-  </section>
+    </section>
+  </details>
 
   <section id="transcribe-section" aria-labelledby="transcribe-heading" hidden>
     <h2 id="transcribe-heading" tabindex="-1">转译结果</h2>
