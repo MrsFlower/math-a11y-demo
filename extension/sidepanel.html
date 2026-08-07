@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>公式助手</title>
+  <style>
+    :root {
+      --fg: #1a1a1a;
+      --accent: #0b57d0;
+      --border: #767676;
+      --focus: #b3261e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0.75rem;
+      font-family: "Microsoft YaHei", system-ui, sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--fg);
+    }
+    h1 { font-size: 1.15rem; margin: 0 0 0.5rem; }
+    h2 { font-size: 1.05rem; margin: 1.2rem 0 0.4rem; border-bottom: 1px solid #ddd; }
+    h3 { font-size: 1rem; margin: 0.8rem 0 0.2rem; }
+    label { font-weight: bold; display: block; margin-top: 0.6rem; }
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 0.95rem;
+      font-family: Consolas, monospace;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+    }
+    textarea { min-height: 4rem; }
+    button {
+      font-size: 0.95rem;
+      padding: 0.45rem 0.8rem;
+      margin: 0.3rem 0.3rem 0.3rem 0;
+      border: 2px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #fff; color: var(--accent); }
+    button.danger { border-color: var(--focus); background: #fff; color: var(--focus); }
+    button[disabled] { opacity: 0.5; cursor: not-allowed; }
+    a:focus-visible, button:focus-visible, textarea:focus-visible,
+    input:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .status {
+      padding: 0.5rem 0.7rem;
+      border-left: 4px solid var(--accent);
+      background: #eef3fd;
+      margin-bottom: 0.6rem;
+    }
+    .status[data-kind="error"] { border-left-color: var(--focus); background: #fdeeee; }
+    .hint { font-size: 0.88rem; color: #444; margin: 0.25rem 0; }
+    #mode-box, #transcribe-profile-box, #shortcut-setup {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin: 0 0 0.6rem;
+      padding: 0.3rem 0.7rem 0.5rem;
+    }
+    .mode-opt { display: inline-block; font-weight: normal; margin: 0.15rem 0.9rem 0.15rem 0; }
+    #shortcut-setup .mode-opt { display: block; }
+    .badge {
+      font-size: 0.82rem;
+      padding: 0.05rem 0.45rem;
+      border-radius: 4px;
+      margin-left: 0.4rem;
+      border: 1px solid var(--border);
+    }
+    .conf-high { background: #e6f4ea; }
+    .conf-medium { background: #fef7e0; }
+        .conf-low { background: #fdeeee; }
+        .warn-box {
+          border-left: 4px solid #b7791f;
+          background: #fef7e0;
+          padding: 0.45rem 0.6rem;
+          margin: 0.4rem 0;
+          font-size: 0.9rem;
+        }
+        .warn-box p { margin: 0.15rem 0; }
+    details {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-top: 0.7rem;
+      padding: 0.15rem 0.7rem 0.5rem;
+    }
+    summary { font-weight: bold; cursor: pointer; padding: 0.3rem 0; }
+    table { border-collapse: collapse; width: 100%; margin-top: 0.3rem; font-size: 0.92rem; }
+    th, td { border: 1px solid var(--border); padding: 0.3rem 0.45rem; text-align: left; vertical-align: top; }
+    th { background: #eef3fd; }
+    pre {
+      background: #f4f4f4;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-size: 0.88rem;
+    }
+    ul, ol { padding-left: 1.3rem; margin: 0.3rem 0; }
+    #candidates-list button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: #fff;
+      color: var(--fg);
+      border-color: var(--border);
+      font-size: 0.92rem;
+      white-space: normal;
+    }
+    #candidates-list .latex-sub {
+      display: block;
+      font-family: Consolas, monospace;
+      font-size: 0.8rem;
+      color: #555;
+      margin-top: 0.15rem;
+      word-break: break-all;
+    }
+    #candidates-list .ctx-sub {
+      display: block;
+      font-size: 0.82rem;
+      color: #1a5c2e;
+      margin-top: 0.15rem;
+    }
+    footer { margin-top: 1.5rem; font-size: 0.82rem; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>数学公式无障碍学习助手</h1>
+
+  <div id="status" class="status" role="status" aria-live="polite">
+    在页面上选中内容后按 Shift+Alt+M 或用右键菜单，也可以点下面的「使用选中内容」或手动粘贴。
+  </div>
+
+  <section id="shortcut-setup" aria-labelledby="shortcut-setup-heading" hidden>
+    <h2 id="shortcut-setup-heading" tabindex="-1">快捷键默认行为</h2>
+    <p class="hint">选择以后按 Shift+Alt+M 默认执行的动作。保存后不会每次询问，可在底部服务设置里修改。</p>
+    <fieldset aria-label="快捷键默认模式">
+      <legend>默认模式</legend>
+      <label class="mode-opt"><input type="radio" name="shortcut-mode" value="explain_scan"> 理解模式：扫描当前页面公式</label>
+      <label class="mode-opt"><input type="radio" name="shortcut-mode" value="selection_transcribe" checked> 指定区域公式识别：处理当前选中内容</label>
+      <label class="mode-opt"><input type="radio" name="shortcut-mode" value="text_input"> 文本输入模式：打开输入框等待粘贴</label>
+    </fieldset>
+    <fieldset aria-label="快捷键转译风格">
+      <legend>指定区域公式识别的转译风格</legend>
+      <label class="mode-opt"><input type="radio" name="shortcut-profile" value="spoken_structured" checked> 结构朗读</label>
+      <label class="mode-opt"><input type="radio" name="shortcut-profile" value="unicode_compact"> 紧凑文本</label>
+    </fieldset>
+    <label class="mode-opt"><input type="checkbox" id="shortcut-remember" checked> 保存后下次按快捷键直接执行，不再显示此设置</label>
+    <button id="shortcut-save-btn">保存快捷键设置</button>
+    <button id="shortcut-cancel-btn" class="secondary">暂不设置</button>
+  </section>
+  
+  <fieldset id="mode-box" aria-label="选择工作模式">
+    <legend class="hint">工作模式（转译负责“读得出来”，理解负责“学得明白”）</legend>
+    <label class="mode-opt"><input type="radio" name="work-mode" value="transcribe" checked> 转译原文，不解释</label>
+    <label class="mode-opt"><input type="radio" name="work-mode" value="explain"> 理解公式，可追问</label>
+  </fieldset>
+
+  <fieldset id="transcribe-profile-box" aria-label="选择转译风格">
+    <legend class="hint">转译风格</legend>
+    <label class="mode-opt"><input type="radio" name="transcribe-profile" value="spoken_structured" checked> 结构朗读</label>
+    <label class="mode-opt"><input type="radio" name="transcribe-profile" value="unicode_compact"> 紧凑文本</label>
+  </fieldset>
+  
+  <section aria-labelledby="capture-heading">
+    <h2 id="capture-heading" tabindex="-1">第一步：送入内容</h2>
+    <button id="extract-btn" aria-label="扫描当前页面，提取全部公式（仅理解模式适用）">提取本页公式</button>
+    <span id="extract-suggest" hidden><button id="extract-switch-btn" class="secondary" aria-label="切换到理解公式模式并立即提取本页公式">切到理解模式并提取</button></span>
+    <button id="selection-btn" class="secondary" aria-label="使用当前页面选中的内容">使用选中内容</button>
+    <details id="paste-fold">
+      <summary>手动粘贴（兜底）</summary>
+      <label for="paste-input">题目、公式、化学式或 LaTeX</label>
+      <textarea id="paste-input" placeholder="例如：已知 f(x)=sqrt(3x+1)… 或 \frac{a}{b}"></textarea>
+      <button id="paste-btn" class="secondary">开始转译</button>
+    </details>
+
+    <div id="candidates" hidden>
+      <h3 id="candidates-heading" tabindex="-1">找到的公式（选择一条）</h3>
+      <p class="hint">按数字键 1~9 可直接选择对应公式。</p>
+      <div id="candidates-list" role="group" aria-labelledby="candidates-heading"></div>
+    </div>
+
+    <div id="confirm-box" hidden>
+      <h3 id="confirm-heading" tabindex="-1">确认识别结果</h3>
+      <p id="capture-source" class="hint"></p>
+      <label for="confirm-input">识别出的 LaTeX（可直接编辑，Ctrl+回车 开始分析）</label>
+      <textarea id="confirm-input"></textarea>
+      <p id="speech-preview" class="hint" aria-live="polite"></p>
+      <button id="confirm-btn" aria-label="确认识别结果并开始分析">确认并分析</button>
+      <button id="reextract-btn" class="secondary" aria-label="放弃本条，重新提取">重新提取</button>
+      <button id="copy-only-btn" class="secondary" aria-label="只复制识别出的LaTeX，不分析">只复制</button>
+      <button id="cancel-btn" class="danger" hidden aria-label="取消本次分析，停止等待">取消本次分析</button>
+    </div>
+  </section>
+
+  <section id="transcribe-section" aria-labelledby="transcribe-heading" hidden>
+    <h2 id="transcribe-heading" tabindex="-1">转译结果</h2>
+    <div id="transcribe-warnings" class="warn-box" role="note" aria-label="转译提醒" hidden></div>
+    <pre id="transcribe-slot" aria-label="转译后的纯文本"></pre>
+    <p>
+      <button id="transcribe-copy-btn" aria-label="复制转译结果">复制转译结果</button>
+      <button id="transcribe-save-btn" class="secondary" aria-label="保存本次转译到历史记录">保存到历史</button>
+      <button id="transcribe-to-explain-btn" class="secondary" aria-label="把原文送入理解模式进一步讲解">转去理解模式</button>
+    </p>
+  </section>
+
+  <section id="result-section" aria-labelledby="result-heading" hidden>
+    <h2 id="result-heading" tabindex="-1">第二步：讲解</h2>
+    <p>
+      <button id="copy-short-btn" class="secondary" aria-label="复制短讲解文本">复制短讲解</button>
+      <button id="copy-latex-btn" class="secondary" aria-label="复制LaTeX源码">复制 LaTeX</button>
+      <button id="copy-all-btn" class="secondary" aria-label="复制全部讲解纯文本">复制全部</button>
+      <button id="ai-speak-btn" class="secondary" aria-label="用 AI 语音朗读公式朗读与一段话总结，再按一次停止">听 AI 讲解</button>
+    </p>
+    <h3>这是什么公式</h3>
+    <p id="name-slot"></p>
+    <div id="warnings-slot" class="warn-box" role="note" aria-label="讲解可靠性提醒" hidden></div>
+    <h3>一段话总结</h3>
+    <p id="summary-slot"></p>
+    <h3>它用来解决什么问题</h3>
+    <p id="purpose-slot"></p>
+    <h3>直觉解释</h3>
+    <p id="intuition-slot"></p>
+    <h3>变量说明</h3>
+    <div id="variables-slot"></div>
+
+    <details id="detail-fold">
+      <summary>详细解释（概念、误解与朗读）</summary>
+      <h3>整体朗读</h3>
+      <p id="speech-slot"></p>
+      <h3>概念理解</h3>
+      <div id="concept-slot"></div>
+      <h3>常见误解</h3>
+      <ul id="misunderstanding-slot"></ul>
+      <h3>原始 LaTeX</h3>
+      <pre id="latex-slot"></pre>
+    </details>
+    <p><a id="open-web-link" href="#" target="_blank">在完整页面查看（结构树与逐部分追问）</a></p>
+  </section>
+
+  <section id="ask-section" aria-labelledby="ask-heading" hidden>
+    <h2 id="ask-heading" tabindex="-1">第三步：继续追问</h2>
+    <div id="suggested-questions" role="group" aria-label="推荐问题"></div>
+    <label for="ask-input">你的问题</label>
+    <input type="text" id="ask-input" placeholder="例如：为什么分母不能为零？">
+    <button id="ask-btn">发送追问</button>
+    <div id="answer-slot" class="status" role="status" aria-live="polite" hidden></div>
+  </section>
+
+  <details id="history-fold">
+    <summary id="history-summary">历史记录</summary>
+    <div id="history-slot"><p class="hint">暂无记录。</p></div>
+    <button id="history-clear-btn" class="danger" hidden aria-label="清空全部历史记录">清空历史</button>
+  </details>
+
+  <details id="settings-fold">
+    <summary>服务设置</summary>
+    <button id="shortcut-edit-btn" class="secondary">修改快捷键默认行为</button>
+    <label for="api-base-input">理解服务地址（默认已连云端；改用本机服务才需要改这里，改完点保存）</label>
+    <input type="text" id="api-base-input">
+    <button id="api-base-save-btn" class="secondary">保存并测试连接</button>
+    <p class="hint">把地址清空再保存，会回到默认的云端地址。本机服务需开发者远程安装后才可用。</p>
+  </details>
+
+  <footer>
+    默认已连接云端服务，开箱即用。遇到问题请联系开发者。
+  </footer>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

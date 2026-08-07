@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数学公式无障碍学习助手</title>
+  <style>
+    :root {
+      --fg: #1a1a1a;
+      --bg: #ffffff;
+      --accent: #0b57d0;
+      --border: #767676;
+      --focus: #b3261e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0 auto;
+      max-width: 56rem;
+      padding: 1rem;
+      font-family: "Microsoft YaHei", system-ui, sans-serif;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+    }
+    nav.jump-nav { margin: 0.5rem 0 1rem; }
+    nav.jump-nav a { margin-right: 1rem; color: var(--accent); }
+    h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.25rem; border-bottom: 2px solid #ddd; padding-bottom: 0.25rem; margin-top: 2rem; }
+    h3 { font-size: 1.1rem; }
+    label { font-weight: bold; display: block; margin-top: 1rem; }
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 0.6rem;
+      font-size: 1rem;
+      font-family: Consolas, monospace;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+    }
+    textarea { min-height: 5rem; }
+    button {
+      font-size: 1rem;
+      padding: 0.55rem 1.1rem;
+      margin: 0.4rem 0.4rem 0.4rem 0;
+      border: 2px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #fff; color: var(--accent); }
+    button.danger { border-color: var(--focus); background: #fff; color: var(--focus); }
+    button:hover { filter: brightness(1.15); }
+    button[disabled] { opacity: 0.5; cursor: not-allowed; }
+    a:focus-visible, button:focus-visible, textarea:focus-visible,
+    input:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    fieldset { border: 1px solid var(--border); border-radius: 6px; margin-top: 1.2rem; padding: 0.4rem 1rem 0.8rem; }
+    legend { font-weight: bold; padding: 0 0.4rem; font-size: 1.1rem; }
+    .status {
+      margin-top: 1rem;
+      padding: 0.6rem 0.9rem;
+      border-left: 5px solid var(--accent);
+      background: #eef3fd;
+    }
+    .status[data-kind="error"] { border-left-color: var(--focus); background: #fdeeee; }
+    .tree-list { list-style: none; padding-left: 1.2rem; border-left: 1px dashed #aaa; }
+    .tree-list > li { margin: 0.35rem 0; }
+    .tree-label { font-weight: bold; }
+    .node-ask { font-size: 0.85rem; padding: 0.15rem 0.5rem; margin-left: 0.5rem; background: #fff; color: var(--accent); }
+    pre {
+      background: #f4f4f4;
+      padding: 0.8rem;
+      overflow-x: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .layer { margin-bottom: 1rem; }
+    .layer h4 { margin: 0 0 0.25rem; }
+    table.vars, table.history { border-collapse: collapse; width: 100%; margin-top: 0.3rem; }
+    table.vars th, table.vars td, table.history th, table.history td {
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.vars th, table.history th { background: #eef3fd; }
+    .confidence-badge {
+      font-size: 0.85rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+      border: 1px solid var(--border);
+    }
+    .conf-high { background: #e6f4ea; }
+    .conf-medium { background: #fef7e0; }
+    .conf-low { background: #fdeeee; }
+    .sec-hidden { display: none; }
+    details {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-top: 1rem;
+      padding: 0.2rem 0.9rem 0.6rem;
+    }
+    summary { font-weight: bold; font-size: 1.1rem; cursor: pointer; padding: 0.4rem 0; }
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 40rem) { .compare-grid { grid-template-columns: 1fr; } }
+    footer { margin-top: 3rem; font-size: 0.9rem; color: #555; }
+    .hint { font-size: 0.92rem; color: #444; margin: 0.3rem 0; }
+    .warn-box {
+      border-left: 4px solid #b7791f;
+      background: #fef7e0;
+      padding: 0.45rem 0.6rem;
+      margin: 0.4rem 0;
+      font-size: 0.92rem;
+    }
+    .warn-box p { margin: 0.15rem 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>数学公式无障碍学习助手</h1>
+    <p>先让理科符号可读，再在需要时帮助理解：转译模式负责“读得出来”，理解模式负责“学得明白”。</p>
+    <nav class="jump-nav" aria-label="页面快速跳转">
+      <a href="#transcribe-heading">跳到符号转译</a>
+      <a href="#input-heading">跳到输入区</a>
+      <a href="#short-heading">跳到短讲解</a>
+      <a href="#detail-heading">跳到详细讲解</a>
+      <a href="#ask-heading">跳到追问</a>
+    </nav>
+  </header>
+
+  <main>
+    <section aria-labelledby="transcribe-heading">
+      <h2 id="transcribe-heading" tabindex="-1">符号转译（读屏不友好的符号 → 可读纯文本，不解释）</h2>
+      <label for="transcribe-input">题目、讲义、化学式或含符号的任意文本</label>
+      <textarea id="transcribe-input" aria-describedby="transcribe-help"
+        placeholder="例如：已知函数 f(x)=sqrt(3x+1)，求 log_2(x) 的取值范围。化学式 H2O 和 CO2 常见。"></textarea>
+      <p id="transcribe-help" class="hint">把读屏读不了的根号、对数、上下标、化学式和视觉公式转成可读纯文本；不解题、不客套，只转符号。完整体验请用浏览器插件。</p>
+      <fieldset>
+        <legend>转译风格</legend>
+        <label><input type="radio" name="transcribe-profile" value="spoken_structured" checked> 结构朗读</label>
+        <label><input type="radio" name="transcribe-profile" value="unicode_compact"> 紧凑文本</label>
+      </fieldset>
+      <button id="transcribe-btn" aria-label="开始转译原文">转译原文</button>
+      <div id="transcribe-status" class="status" role="status" aria-live="polite" hidden></div>
+      <div id="transcribe-result-box" hidden>
+        <h3>转译结果</h3>
+        <div id="transcribe-warnings" class="warn-box" role="note" hidden></div>
+        <pre id="transcribe-result"></pre>
+        <button id="transcribe-copy-btn" class="secondary" aria-label="复制转译结果">复制结果</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="input-heading">
+      <h2 id="input-heading" tabindex="-1">第一步：输入公式（四种方式任选）</h2>
+
+      <fieldset>
+        <legend>方式一：粘贴 LaTeX</legend>
+        <label for="latex-input">LaTeX 公式</label>
+        <textarea id="latex-input" aria-describedby="latex-help"
+          placeholder="例如：\int_{-\infty}^{\infty} f(x)e^{-i\omega x} dx"></textarea>
+        <p id="latex-help" class="hint">会 LaTeX 或从其他工具复制过 LaTeX 的话，直接粘贴到这里最快。</p>
+        <details>
+          <summary>解析路线（对比实验用，默认无需改动）</summary>
+          <label style="display:inline; font-weight:normal;">
+            <input type="radio" name="engine" value="python" checked> A：纯 Python（默认）
+          </label>
+          <label style="display:inline; font-weight:normal; margin-left:1rem;">
+            <input type="radio" name="engine" value="sre"> B：Speech Rule Engine（需 Node）
+          </label>
+          <label style="display:inline; font-weight:normal; margin-left:1rem;">
+            <input type="radio" name="engine" value="compare"> A/B 对比
+          </label>
+        </details>
+        <button id="analyze-btn" aria-label="分析公式，生成短讲解和详细讲解">分析公式</button>
+        <button id="cancel-btn" class="danger" hidden aria-label="取消本次分析，停止等待">取消本次分析</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>方式二：上传公式图片（OCR 识别）</legend>
+        <label for="image-input">选择图片文件（png / jpg / webp / bmp，8MB 以内）</label>
+        <input type="file" id="image-input" accept="image/png,image/jpeg,image/webp,image/bmp"
+          aria-describedby="ocr-help">
+        <p id="ocr-help" class="hint">适合教材截图、网页截图、别人发来的公式图片。识别结果不会直接分析，会先请你确认。</p>
+        <button id="ocr-btn" class="secondary" aria-label="识别图片中的公式为LaTeX">识别图片公式</button>
+        <div id="ocr-status" role="status" aria-live="polite"></div>
+        <div id="ocr-confirm" hidden>
+          <label for="ocr-result">识别出的 LaTeX（可直接编辑修改）</label>
+          <textarea id="ocr-result" aria-describedby="ocr-confirm-help"></textarea>
+          <p id="ocr-confirm-help" class="hint">请确认识别结果是否正确，可用键盘直接修改，然后选择下一步。</p>
+          <button id="ocr-accept-btn" aria-label="确认识别结果并开始分析">确认并分析</button>
+          <button id="ocr-retry-btn" class="secondary" aria-label="重新选择一张图片">重新选择图片</button>
+          <button id="ocr-copy-btn" class="secondary" aria-label="只复制识别出的LaTeX，不分析">只复制识别结果</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>方式三：粘贴普通公式文本</legend>
+        <label for="text-input">公式文本或中文描述</label>
+        <textarea id="text-input" aria-describedby="text-help"
+          placeholder="例如：x = (-b ± sqrt(b^2-4ac))/(2a)，或：x等于负b加减根号下b平方减4ac除以2a"></textarea>
+        <p id="text-help" class="hint">适合从网页、PDF、聊天窗口复制来的公式文本。转换结果会填入方式一的输入框，请确认后再分析。</p>
+        <button id="normalize-btn" class="secondary" aria-label="把普通文本转换为LaTeX公式">转换为 LaTeX</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>方式四：使用示例或最近记录</legend>
+        <h3 style="margin-bottom:0.2rem;">内置示例</h3>
+        <div role="group" aria-label="内置示例公式">
+          <span id="examples-slot"></span>
+        </div>
+        <h3 style="margin-bottom:0.2rem;">最近记录（保存在本浏览器，最多 20 条）</h3>
+        <div id="history-slot"><p class="hint">暂无记录。分析过的公式会自动出现在这里。</p></div>
+        <button id="history-clear-btn" class="danger" hidden aria-label="清空全部历史记录">清空历史</button>
+      </fieldset>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+    <section id="result-region" aria-labelledby="result-heading" hidden>
+      <h2 id="result-heading" tabindex="-1">第二步：分析结果</h2>
+      <p role="group" aria-label="复制与朗读操作">
+        <button id="copy-short-btn" class="secondary" aria-label="复制短讲解：总结、用途、直觉和变量说明">复制短讲解</button>
+        <button id="copy-detail-btn" class="secondary" aria-label="复制详细解释：概念、结构和误解部分">复制详细解释</button>
+        <button id="copy-latex-btn" class="secondary" aria-label="复制原始LaTeX源码">复制 LaTeX</button>
+        <button id="copy-mathml-btn" class="secondary" aria-label="复制MathML代码">复制 MathML</button>
+        <button id="copy-all-btn" class="secondary" aria-label="复制纯文本全集，包含全部讲解内容">复制纯文本全集</button>
+        <button id="speak-btn" class="secondary" aria-label="用系统语音朗读公式">朗读公式</button>
+        <button id="stop-speak-btn" class="secondary" aria-label="停止语音朗读">停止朗读</button>
+        <button id="ai-speak-btn" class="secondary" aria-label="用 AI 语音朗读公式朗读与一段话总结，再按一次停止">听 AI 讲解</button>
+      </p>
+
+      <h3 id="short-heading" tabindex="-1">短讲解</h3>
+      <h4 id="h-name">这是什么公式</h4>
+      <p id="name-slot"></p>
+      <h4 id="h-summary">一段话总结</h4>
+      <p id="summary-slot"></p>
+      <h4 id="h-purpose">它用来解决什么问题</h4>
+      <p id="purpose-slot"></p>
+      <h4 id="h-intuition">直觉解释</h4>
+      <p id="intuition-slot"></p>
+      <h4 id="h-variables">变量说明</h4>
+      <div id="variables-slot"></div>
+
+      <h3 id="detail-heading" tabindex="-1">详细讲解（按需展开）</h3>
+      <details id="detail-concept">
+        <summary>概念理解与常见误解</summary>
+        <h4 id="h-readorder">推荐听读顺序</h4>
+        <ol id="readorder-slot"></ol>
+        <h4 id="h-concept">概念理解</h4>
+        <div id="concept-layers-slot"></div>
+        <h4 id="h-misunderstanding">常见误解</h4>
+        <ul id="misunderstanding-slot"></ul>
+      </details>
+      <details id="detail-structure">
+        <summary>结构讲解：朗读文本、结构树与结构层级</summary>
+        <h4>可朗读文本</h4>
+        <p id="speech-slot"></p>
+        <p id="engine-note" class="hint"></p>
+        <h4>结构树（每个部分都可以追问）</h4>
+        <div id="tree-slot"></div>
+        <h4>结构层级说明</h4>
+        <div id="structure-layers-slot"></div>
+      </details>
+      <details id="detail-source">
+        <summary>原始 LaTeX 与 MathML</summary>
+        <h4>原始 LaTeX</h4>
+        <pre id="latex-slot"></pre>
+        <h4>MathML</h4>
+        <pre id="mathml-slot"></pre>
+      </details>
+
+      <h3 id="ask-heading" tabindex="-1">继续追问</h3>
+      <p id="ask-focus-note" aria-live="polite"></p>
+      <div id="suggested-slot" role="group" aria-label="推荐追问问题"></div>
+      <label for="ask-input">你的问题</label>
+      <input type="text" id="ask-input" placeholder="例如：分母是什么意思？">
+      <button id="ask-btn" aria-label="提交追问">提问</button>
+      <div id="answer-slot" aria-live="polite"></div>
+    </section>
+
+    <section id="compare-region" aria-labelledby="compare-heading" hidden>
+      <h2 id="compare-heading">A/B 路线对比</h2>
+      <div class="compare-grid">
+        <div>
+          <h3>A：纯 Python 路线</h3>
+          <p id="cmp-python-speech"></p>
+          <pre id="cmp-python-tree"></pre>
+        </div>
+        <div>
+          <h3>B：Speech Rule Engine 路线</h3>
+          <p id="cmp-sre-speech"></p>
+          <pre id="cmp-sre-semantic"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>本工具基于开源项目组合构建（latex2mathml、Speech Rule Engine 等），面向视障学生的公益项目原型。所有功能均可通过键盘操作，历史记录仅保存在本机浏览器。</p>
+  </footer>
+
+  <script>
+    "use strict";
+    const $ = (id) => document.getElementById(id);
+    let currentResult = null;   // 最近一次 /api/parse-latex 的返回
+    let askNodeId = null;       // 当前聚焦追问的节点
+    let abortCtrl = null;       // 当前分析请求的 AbortController
+
+    function setStatus(msg, kind = "info") {
+      const box = $("status");
+      box.hidden = !msg;
+      box.dataset.kind = kind;
+      box.textContent = msg;
+    }
+
+    async function postJSON(url, body, signal) {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal,
+      });
+      return resp.json();
+    }
+
+    async function copyText(text, doneMsg) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus(doneMsg);
+      } catch (e) {
+        setStatus("复制失败，请手动选择文本复制。", "error");
+      }
+    }
+
+    // ---------- 符号转译（第五阶段，调试/演示入口；主前台在浏览器插件） ----------
+
+    function setTranscribeStatus(msg, kind = "info") {
+      const box = $("transcribe-status");
+      box.hidden = !msg;
+      box.dataset.kind = kind;
+      box.textContent = msg;
+    }
+
+    $("transcribe-btn").addEventListener("click", async () => {
+      const text = $("transcribe-input").value.trim();
+      if (!text) {
+        setTranscribeStatus("请先输入要转译的内容。", "error");
+        return;
+      }
+      const btn = $("transcribe-btn");
+      btn.disabled = true;
+      $("transcribe-result-box").hidden = true;
+      const profileEl = document.querySelector('input[name="transcribe-profile"]:checked');
+      const profile = profileEl ? profileEl.value : "spoken_structured";
+      setTranscribeStatus("正在转译：只转符号，不解释…");
+      try {
+        const data = await postJSON("/api/transcribe-symbols", { text, source_type: "plain_text", profile });
+        if (!data.ok || !data.transcribed_text) {
+          setTranscribeStatus(`转译失败：${data.error || "未知错误"}`, "error");
+          return;
+        }
+        $("transcribe-result").textContent = data.transcribed_text;
+        const wslot = $("transcribe-warnings");
+        wslot.innerHTML = "";
+        (data.warnings || []).forEach((w) => {
+          const p = document.createElement("p");
+          p.textContent = w;
+          wslot.appendChild(p);
+        });
+        wslot.hidden = !(data.warnings || []).length;
+        $("transcribe-result-box").hidden = false;
+        const conf = data.confidence === "high" ? "置信度：高。"
+          : data.confidence === "medium" ? "置信度：中，请核对后再使用。"
+          : "置信度：低，请重点核对。";
+        setTranscribeStatus(`转译完成（${data.source === "rules" ? "本地规则" : "大模型"}）。${conf}`);
+        $("transcribe-copy-btn").focus();
+      } catch (e) {
+        setTranscribeStatus("转译请求失败：服务未启动或网络异常。", "error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    $("transcribe-copy-btn").addEventListener("click", () =>
+      copyText($("transcribe-result").textContent, "转译结果已复制。")
+    );
+
+    // ---------- 历史记录（localStorage，最多 20 条） ----------
+    const HISTORY_KEY = "math_a11y_history_v1";
+
+    function loadHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+      catch (e) { return []; }
+    }
+
+    function saveHistory(list) {
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 20))); }
+      catch (e) { /* 隐私模式等场景下静默失败，不影响主流程 */ }
+    }
+
+    function addHistory(entry) {
+      const list = loadHistory().filter((h) => h.latex !== entry.latex);
+      list.unshift(entry);
+      saveHistory(list);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const slot = $("history-slot");
+      const list = loadHistory();
+      slot.innerHTML = "";
+      $("history-clear-btn").hidden = list.length === 0;
+      if (!list.length) {
+        const p = document.createElement("p");
+        p.className = "hint";
+        p.textContent = "暂无记录。分析过的公式会自动出现在这里。";
+        slot.appendChild(p);
+        return;
+      }
+      const table = document.createElement("table");
+      table.className = "history";
+      const caption = document.createElement("caption");
+      caption.className = "sec-hidden";
+      caption.textContent = "最近分析过的公式记录";
+      table.appendChild(caption);
+      const thead = document.createElement("thead");
+      thead.innerHTML = "<tr><th scope='col'>时间</th><th scope='col'>公式</th><th scope='col'>操作</th></tr>";
+      table.appendChild(thead);
+      const tbody = document.createElement("tbody");
+      list.forEach((h) => {
+        const tr = document.createElement("tr");
+        const tdTime = document.createElement("td");
+        tdTime.textContent = h.time || "";
+        const tdName = document.createElement("td");
+        tdName.textContent = (h.name || "未命名公式");
+        const tdOps = document.createElement("td");
+
+        const loadBtn = document.createElement("button");
+        loadBtn.type = "button";
+        loadBtn.className = "secondary";
+        loadBtn.textContent = "重新载入";
+        loadBtn.setAttribute("aria-label", "重新载入公式：" + (h.name || h.latex));
+        loadBtn.addEventListener("click", () => {
+          $("latex-input").value = h.latex;
+          setStatus("已载入历史记录「" + (h.name || h.latex) + "」，按「分析公式」重新分析。");
+          $("latex-input").focus();
+        });
+        tdOps.appendChild(loadBtn);
+
+        const copyBtn = document.createElement("button");
+        copyBtn.type = "button";
+        copyBtn.className = "secondary";
+        copyBtn.textContent = "复制总结";
+        copyBtn.setAttribute("aria-label", "复制这条记录的一段话总结：" + (h.name || h.latex));
+        copyBtn.addEventListener("click", () => copyText(h.summary || h.latex, "总结已复制到剪贴板。"));
+        tdOps.appendChild(copyBtn);
+
+        tr.appendChild(tdTime);
+        tr.appendChild(tdName);
+        tr.appendChild(tdOps);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      slot.appendChild(table);
+    }
+
+    $("history-clear-btn").addEventListener("click", () => {
+      if (!window.confirm("确定要清空全部历史记录吗？此操作不可恢复。")) return;
+      saveHistory([]);
+      renderHistory();
+      setStatus("历史记录已清空。");
+    });
+
+    // ---------- 示例按钮 ----------
+    async function loadExamples() {
+      try {
+        const data = await (await fetch("/api/examples")).json();
+        const slot = $("examples-slot");
+        data.examples.forEach((ex) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "secondary";
+          btn.textContent = "示例：" + ex.title;
+          btn.setAttribute("aria-label", "填入示例公式：" + ex.title + "。" + ex.hint);
+          btn.addEventListener("click", () => {
+            $("latex-input").value = ex.latex;
+            setStatus("已填入示例「" + ex.title + "」，按「分析公式」开始分析。");
+            $("latex-input").focus();
+          });
+          slot.appendChild(btn);
+        });
+      } catch (e) {
+        setStatus("加载示例失败：" + e, "error");
+      }
+    }
+
+    // ---------- 结构树渲染 ----------
+    function renderTree(node) {
+      const ul = document.createElement("ul");
+      ul.className = "tree-list";
+      const li = document.createElement("li");
+
+      const label = document.createElement("span");
+      label.className = "tree-label";
+      label.textContent = node.label + "：";
+      li.appendChild(label);
+
+      const text = document.createElement("span");
+      text.textContent = node.text;
+      li.appendChild(text);
+
+      const askBtn = document.createElement("button");
+      askBtn.type = "button";
+      askBtn.className = "node-ask secondary";
+      askBtn.textContent = "追问此部分";
+      askBtn.setAttribute("aria-label", "追问这一部分：" + node.label + "，内容是 " + node.spoken);
+      askBtn.addEventListener("click", () => {
+        askNodeId = node.id;
+        $("ask-focus-note").textContent = "当前聚焦：" + node.label + "（" + node.text + "）。你的下一个问题将针对这一部分。";
+        $("ask-input").focus();
+      });
+      li.appendChild(askBtn);
+
+      if (node.children && node.children.length) {
+        node.children.forEach((ch) => li.appendChild(renderTree(ch)));
+      }
+      ul.appendChild(li);
+      return ul;
+    }
+
+    // ---------- 渲染完整结果 ----------
+    function toggleSection(headingId, slotId, hasContent) {
+      const h = $(headingId), s = $(slotId);
+      if (h) h.classList.toggle("sec-hidden", !hasContent);
+      if (s) s.classList.toggle("sec-hidden", !hasContent);
+    }
+
+    function renderLayerList(slot, layers) {
+      slot.innerHTML = "";
+      (layers || []).forEach((layer) => {
+        const div = document.createElement("div");
+        div.className = "layer";
+        const h5 = document.createElement("h5");
+        h5.textContent = layer.title || "";
+        h5.style.margin = "0 0 0.25rem";
+        const p = document.createElement("p");
+        p.textContent = layer.content || "";
+        p.style.margin = "0";
+        div.appendChild(h5);
+        div.appendChild(p);
+        slot.appendChild(div);
+      });
+    }
+
+    function renderVariables(slot, variables) {
+      slot.innerHTML = "";
+      if (!variables || !variables.length) return;
+      const table = document.createElement("table");
+      table.className = "vars";
+      const caption = document.createElement("caption");
+      caption.textContent = "公式中各符号的角色与含义";
+      caption.className = "sec-hidden";
+      table.appendChild(caption);
+      const thead = document.createElement("thead");
+      thead.innerHTML = "<tr><th scope='col'>符号</th><th scope='col'>角色</th><th scope='col'>含义</th></tr>";
+      table.appendChild(thead);
+      const tbody = document.createElement("tbody");
+      variables.forEach((v) => {
+        const tr = document.createElement("tr");
+        const th = document.createElement("th");
+        th.setAttribute("scope", "row");
+        th.textContent = v.symbol || "";
+        const tdRole = document.createElement("td");
+        tdRole.textContent = v.role || "";
+        const tdMean = document.createElement("td");
+        tdMean.textContent = v.meaning || "";
+        tr.appendChild(th);
+        tr.appendChild(tdRole);
+        tr.appendChild(tdMean);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      slot.appendChild(table);
+    }
+
+    // 组装「短讲解」纯文本（复制用）
+    function shortText(data) {
+      const exp = data.explanation || {};
+      const lines = [];
+      if (exp.formula_name) lines.push("【这是什么公式】", exp.formula_name, "");
+      if (exp.accessible_summary) lines.push("【一段话总结】", exp.accessible_summary, "");
+      if (exp.purpose) lines.push("【它用来解决什么问题】", exp.purpose, "");
+      if (exp.intuition) lines.push("【直觉解释】", exp.intuition, "");
+      if ((exp.variables || []).length) {
+        lines.push("【变量说明】");
+        exp.variables.forEach((v) => lines.push("- " + (v.symbol || "") + "（" + (v.role || "") + "）：" + (v.meaning || "")));
+      }
+      return lines.join("\n").trim();
+    }
+
+    // 组装「详细解释」纯文本（复制用）
+    function detailText(data) {
+      const exp = data.explanation || {};
+      const lines = [];
+      if ((exp.read_order || []).length) {
+        lines.push("【推荐听读顺序】");
+        exp.read_order.forEach((s, i) => lines.push((i + 1) + ". " + s));
+        lines.push("");
+      }
+      const pushLayers = (title, layers) => {
+        if (!(layers || []).length) return;
+        lines.push("【" + title + "】");
+        layers.forEach((l, i) => { lines.push((i + 1) + ". " + (l.title || "")); lines.push("   " + (l.content || "")); });
+        lines.push("");
+      };
+      pushLayers("概念理解", exp.concept_layers);
+      pushLayers("结构层级", exp.structure_layers || exp.layers);
+      if ((exp.common_misunderstandings || []).length) {
+        lines.push("【常见误解】");
+        exp.common_misunderstandings.forEach((m) => lines.push("- " + m));
+      }
+      return lines.join("\n").trim();
+    }
+
+    function renderResult(data) {
+      currentResult = data;
+      askNodeId = null;
+      stopAiSpeak();  // 新结果上来，停掉上一条公式的 AI 语音
+      $("ask-focus-note").textContent = "";
+      $("result-region").hidden = false;
+      $("compare-region").hidden = true;
+      const exp = data.explanation || {};
+
+      $("speech-slot").textContent = data.speech_text;
+      $("engine-note").textContent = "解析路线：" + data.engine + (data.engine_note ? "。" + data.engine_note : "");
+      $("latex-slot").textContent = data.latex;
+      $("mathml-slot").textContent = data.mathml || "（无 MathML 输出）";
+
+      // 短讲解：名称徽章 + 总结 + 用途 + 直觉 + 变量
+      const nameSlot = $("name-slot");
+      nameSlot.innerHTML = "";
+      nameSlot.appendChild(document.createTextNode(exp.formula_name || "（未识别）"));
+      if (exp.domain) {
+        const d = document.createElement("span");
+        d.textContent = "领域：" + exp.domain;
+        d.className = "confidence-badge";
+        nameSlot.appendChild(d);
+      }
+      if (exp.confidence) {
+        const c = document.createElement("span");
+        const map = { high: "高", medium: "中", low: "低（根据结构推断）" };
+        c.textContent = "置信度：" + (map[exp.confidence] || exp.confidence);
+        c.className = "confidence-badge conf-" + exp.confidence;
+        nameSlot.appendChild(c);
+      }
+
+      $("summary-slot").textContent = exp.accessible_summary || "";
+      toggleSection("h-summary", "summary-slot", !!exp.accessible_summary);
+      $("purpose-slot").textContent = exp.purpose || "";
+      toggleSection("h-purpose", "purpose-slot", !!exp.purpose);
+      $("intuition-slot").textContent = exp.intuition || "";
+      toggleSection("h-intuition", "intuition-slot", !!exp.intuition);
+      renderVariables($("variables-slot"), exp.variables);
+      toggleSection("h-variables", "variables-slot", (exp.variables || []).length > 0);
+
+      // 详细讲解（折叠区）
+      const roSlot = $("readorder-slot");
+      roSlot.innerHTML = "";
+      (exp.read_order || []).forEach((step) => {
+        const li = document.createElement("li");
+        li.textContent = step;
+        roSlot.appendChild(li);
+      });
+      toggleSection("h-readorder", "readorder-slot", (exp.read_order || []).length > 0);
+
+      renderLayerList($("concept-layers-slot"), exp.concept_layers);
+      toggleSection("h-concept", "concept-layers-slot", (exp.concept_layers || []).length > 0);
+
+      const misSlot = $("misunderstanding-slot");
+      misSlot.innerHTML = "";
+      (exp.common_misunderstandings || []).forEach((m) => {
+        const li = document.createElement("li");
+        li.textContent = m;
+        misSlot.appendChild(li);
+      });
+      toggleSection("h-misunderstanding", "misunderstanding-slot", (exp.common_misunderstandings || []).length > 0);
+
+      const treeSlot = $("tree-slot");
+      treeSlot.innerHTML = "";
+      treeSlot.appendChild(renderTree(data.tree));
+      renderLayerList($("structure-layers-slot"), exp.structure_layers || exp.layers);
+
+      // 推荐追问
+      const sug = $("suggested-slot");
+      sug.innerHTML = "";
+      (exp.suggested_questions || []).forEach((q) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "secondary";
+        btn.textContent = q;
+        btn.setAttribute("aria-label", "使用推荐问题：" + q);
+        btn.addEventListener("click", () => {
+          $("ask-input").value = q;
+          $("ask-btn").click();
+        });
+        sug.appendChild(btn);
+      });
+
+      // 写入历史记录
+      addHistory({
+        time: new Date().toLocaleString("zh-CN", { hour12: false }),
+        latex: data.latex,
+        name: exp.formula_name || "未命名公式",
+        summary: exp.accessible_summary || "",
+      });
+
+      setStatus("分析完成。默认展示短讲解，详细内容在下方折叠区展开。解释来源：" +
+        (exp.source === "llm" ? "大模型" : "本地规则（未配置大模型 Key 或调用失败）"));
+      $("result-heading").focus();
+    }
+
+    // ---------- 分析（带等待状态与取消） ----------
+    function setAnalyzing(on) {
+      $("analyze-btn").disabled = on;
+      $("ocr-accept-btn").disabled = on;
+      $("cancel-btn").hidden = !on;
+    }
+
+    async function analyzeLatex(latex, engine) {
+      abortCtrl = new AbortController();
+      setAnalyzing(true);
+      setStatus("正在分析，通常需要 20 秒左右。可按「取消本次分析」停止等待。");
+      try {
+        const data = await postJSON("/api/parse-latex", { latex, engine }, abortCtrl.signal);
+        if (!data.ok) { setStatus(data.error, "error"); return; }
+        renderResult(data);
+      } catch (e) {
+        if (e.name === "AbortError") {
+          setStatus("本次分析已取消。可以修改公式后重新分析。");
+        } else {
+          setStatus("分析请求出错：" + e, "error");
+        }
+      } finally {
+        setAnalyzing(false);
+        abortCtrl = null;
+      }
+    }
+
+    $("analyze-btn").addEventListener("click", async () => {
+      const latex = $("latex-input").value.trim();
+      if (!latex) { setStatus("请先输入 LaTeX 公式，或使用其他输入方式。", "error"); $("latex-input").focus(); return; }
+      const engine = document.querySelector('input[name="engine"]:checked').value;
+
+      if (engine === "compare") {
+        setStatus("正在进行 A/B 双路线对比……");
+        const data = await postJSON("/api/compare", { latex });
+        if (!data.ok) { setStatus(data.error, "error"); return; }
+        $("result-region").hidden = true;
+        $("compare-region").hidden = false;
+        $("cmp-python-speech").textContent = data.python_route.speech_text;
+        $("cmp-python-tree").textContent = data.python_route.tree_outline;
+        if (data.sre_route.available && data.sre_route.speech_text) {
+          $("cmp-sre-speech").textContent = data.sre_route.speech_text + "（locale：" + data.sre_route.locale + "）";
+          $("cmp-sre-semantic").textContent = data.sre_route.semantic_xml || "（无语义树输出）";
+        } else {
+          $("cmp-sre-speech").textContent = "SRE 路线不可用：" + (data.sre_route.error || "未知原因");
+          $("cmp-sre-semantic").textContent = "";
+        }
+        setStatus("对比完成，请浏览「A/B 路线对比」区域。");
+        return;
+      }
+      await analyzeLatex(latex, engine);
+    });
+
+    $("cancel-btn").addEventListener("click", () => {
+      if (abortCtrl) abortCtrl.abort();
+    });
+
+    // ---------- OCR：识别 -> 确认/编辑 -> 分析 的可恢复流程 ----------
+    function setOcrStatus(msg) { $("ocr-status").textContent = msg; }
+
+    $("ocr-btn").addEventListener("click", async () => {
+      const file = $("image-input").files[0];
+      if (!file) { setOcrStatus("请先选择一张公式图片。"); $("image-input").focus(); return; }
+      setOcrStatus("正在识别图片中的公式，请稍候……");
+      $("ocr-confirm").hidden = true;
+      const form = new FormData();
+      form.append("image", file);
+      try {
+        const resp = await fetch("/api/ocr-formula", { method: "POST", body: form });
+        const data = await resp.json();
+        if (!data.ok) {
+          setOcrStatus("识别失败：" + data.error +
+            " 请换一张更清晰的截图，也可以改用方式一手动粘贴 LaTeX，或方式三粘贴普通文本。");
+          return;
+        }
+        $("ocr-result").value = data.latex;
+        $("ocr-confirm").hidden = false;
+        setOcrStatus("识别结果已填入下方编辑框（后端：" + data.backend + "），请确认或编辑后再分析。");
+        $("ocr-result").focus();
+      } catch (e) {
+        setOcrStatus("识别请求出错：" + e + " 请重试，或改用其他输入方式。");
+      }
+    });
+
+    $("ocr-accept-btn").addEventListener("click", async () => {
+      const latex = $("ocr-result").value.trim();
+      if (!latex) { setOcrStatus("识别结果为空，请重新识别或手动输入。"); $("ocr-result").focus(); return; }
+      $("latex-input").value = latex;
+      const engine = document.querySelector('input[name="engine"]:checked').value;
+      await analyzeLatex(latex, engine === "compare" ? "python" : engine);
+    });
+
+    $("ocr-retry-btn").addEventListener("click", () => {
+      $("image-input").value = "";
+      $("ocr-confirm").hidden = true;
+      setOcrStatus("已清除本次识别，请重新选择图片。");
+      $("image-input").focus();
+    });
+
+    $("ocr-copy-btn").addEventListener("click", () => {
+      const latex = $("ocr-result").value.trim();
+      if (!latex) { setOcrStatus("识别结果为空，无内容可复制。"); return; }
+      copyText(latex, "识别出的 LaTeX 已复制到剪贴板。");
+    });
+
+    // ---------- 普通文本转 LaTeX ----------
+    $("normalize-btn").addEventListener("click", async () => {
+      const text = $("text-input").value.trim();
+      if (!text) { setStatus("请先粘贴公式文本。", "error"); $("text-input").focus(); return; }
+      setStatus("正在把文本转换为 LaTeX……");
+      try {
+        const data = await postJSON("/api/normalize-input", { text });
+        if (!data.ok) { setStatus("转换失败：" + data.error, "error"); return; }
+        $("latex-input").value = data.latex;
+        const confMap = { high: "高", medium: "中", low: "低" };
+        let msg = "转换完成，LaTeX 已填入方式一的输入框（置信度：" + (confMap[data.confidence] || data.confidence) + "）。" +
+          (data.notes ? data.notes : "");
+        if (data.confidence !== "high") msg += " 请检查识别结果无误后再按「分析公式」。";
+        setStatus(msg);
+        $("latex-input").focus();
+      } catch (e) {
+        setStatus("转换请求出错：" + e, "error");
+      }
+    });
+
+    // ---------- 追问 ----------
+    $("ask-btn").addEventListener("click", async () => {
+      if (!currentResult) { setStatus("请先分析一个公式。", "error"); return; }
+      const question = $("ask-input").value.trim();
+      if (!question) { setStatus("请输入你的问题。", "error"); $("ask-input").focus(); return; }
+      setStatus("正在思考你的问题……");
+      const data = await postJSON("/api/ask", {
+        latex: currentResult.latex,
+        question,
+        node_id: askNodeId,
+      });
+      const slot = $("answer-slot");
+      slot.innerHTML = "";
+      const h4 = document.createElement("h4");
+      h4.textContent = "问：" + question;
+      const p = document.createElement("p");
+      p.textContent = data.ok ? data.answer : ("提问失败：" + data.error);
+      slot.appendChild(h4);
+      slot.appendChild(p);
+      setStatus("回答已生成，见「继续追问」区域。");
+    });
+
+    // ---------- 复制按钮组 ----------
+    $("copy-short-btn").addEventListener("click", () => {
+      if (!currentResult) return;
+      copyText(shortText(currentResult), "短讲解已复制到剪贴板。");
+    });
+    $("copy-detail-btn").addEventListener("click", () => {
+      if (!currentResult) return;
+      copyText(detailText(currentResult), "详细解释已复制到剪贴板。");
+    });
+    $("copy-latex-btn").addEventListener("click", () => {
+      if (!currentResult) return;
+      copyText(currentResult.latex, "LaTeX 源码已复制到剪贴板。");
+    });
+    $("copy-mathml-btn").addEventListener("click", () => {
+      if (!currentResult) return;
+      copyText(currentResult.mathml || "", "MathML 已复制到剪贴板。");
+    });
+    $("copy-all-btn").addEventListener("click", () => {
+      if (!currentResult) return;
+      copyText(currentResult.plain_text, "纯文本全集已复制到剪贴板。");
+    });
+
+    // ---------- 朗读 ----------
+    $("speak-btn").addEventListener("click", () => {
+      if (!currentResult) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(currentResult.speech_text);
+      u.lang = "zh-CN";
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    });
+    $("stop-speak-btn").addEventListener("click", () => window.speechSynthesis.cancel());
+
+    // ---------- AI 语音讲解（百炼 TTS）----------
+    // 铁律：只在用户点击时播放，绝不自动，读屏用户不点它就完全无感。
+    let aiAudio = null;
+    let aiAudioUrl = null;
+    function stopAiSpeak() {
+      if (aiAudio) { aiAudio.pause(); aiAudio = null; }
+      if (aiAudioUrl) { URL.revokeObjectURL(aiAudioUrl); aiAudioUrl = null; }
+      $("ai-speak-btn").textContent = "听 AI 讲解";
+    }
+    $("ai-speak-btn").addEventListener("click", async () => {
+      if (!currentResult) return;
+      if (aiAudio) { stopAiSpeak(); setStatus("已停止 AI 讲解。"); return; }
+      const exp = currentResult.explanation || {};
+      const text = [currentResult.speech_text, exp.accessible_summary].filter(Boolean).join("。");
+      const btn = $("ai-speak-btn");
+      btn.disabled = true;
+      setStatus("正在合成语音，首次约需几秒…");
+      try {
+        const resp = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          setStatus(err.error || "语音合成失败，可改用「朗读公式」系统语音。", "error");
+          return;
+        }
+        window.speechSynthesis.cancel();  // 避免和系统朗读叠音
+        aiAudioUrl = URL.createObjectURL(await resp.blob());
+        aiAudio = new Audio(aiAudioUrl);
+        aiAudio.onended = () => { stopAiSpeak(); setStatus("AI 讲解播放完毕。"); };
+        await aiAudio.play();
+        btn.textContent = "停止 AI 讲解";
+        setStatus("正在播放 AI 语音讲解，再按一次可停止。");
+      } catch (e) {
+        setStatus("语音合成请求出错：" + e, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // 回车提交追问
+    $("ask-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); $("ask-btn").click(); }
+    });
+
+    loadExamples();
+    renderHistory();
+
+    // 插件桥接（第五阶段）：侧边栏「在完整页面查看」带 ?latex= 跳转过来，预填输入框
+    (() => {
+      const q = new URLSearchParams(location.search).get("latex");
+      if (!q) return;
+      $("latex-input").value = q;
+      setStatus("已从插件载入公式，按「分析公式」查看完整结果（含结构树与逐部分追问）。");
+      $("latex-input").focus();
+    })();
+  </script>
+</body>
+</html>

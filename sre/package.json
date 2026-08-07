@@ -1,0 +1,10 @@
+{
+  "name": "sre-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Speech Rule Engine 命令行桥：stdin 收 MathML，stdout 出朗读文本与语义树（供 Python 后端调用）",
+  "main": "sre_cli.js",
+  "dependencies": {
+    "speech-rule-engine": "^4.0.7"
+  }
+}

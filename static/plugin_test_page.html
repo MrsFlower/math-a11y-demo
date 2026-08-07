@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>插件捕获测试页（五种公式来源）</title>
+  <style>
+    body { max-width: 46rem; margin: 0 auto; padding: 1rem; font-family: system-ui, sans-serif; line-height: 1.8; }
+    section { border: 1px solid #ccc; border-radius: 6px; padding: 0.5rem 1rem; margin: 1rem 0; }
+    h2 { font-size: 1.05rem; }
+    .note { color: #555; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>插件捕获测试页</h1>
+  <p class="note">本页手工构造了各渲染器的真实 DOM 结构（不加载 CDN，离线可测）。
+    预期「提取本页公式」找到 5 条：前 4 条 kind=latex，第 5 条 kind=text。</p>
+
+  <section>
+    <h2>1. KaTeX 结构（annotation 自带 LaTeX）</h2>
+    <span class="katex">
+      <span class="katex-mathml">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <semantics>
+            <mrow><mi>x</mi><mo>=</mo><mfrac><mrow><mo>−</mo><mi>b</mi><mo>±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo>−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></mrow>
+            <annotation encoding="application/x-tex">x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}</annotation>
+          </semantics>
+        </math>
+      </span>
+      <span class="katex-html" aria-hidden="true">x = (−b ± √(b²−4ac)) / 2a</span>
+    </span>
+  </section>
+
+  <section>
+    <h2>2. MathJax v2 结构（script type="math/tex"）</h2>
+    <div class="MathJax_Display">∫f(x)e^(−iωx)dx（渲染占位）</div>
+    <script type="math/tex; mode=display">\int_{-\infty}^{\infty} f(x) e^{-i\omega x} dx</script>
+  </section>
+
+  <section>
+    <h2>3. 维基百科公式图（img alt 是 LaTeX）</h2>
+    <img class="mwe-math-fallback-image-inline"
+         alt="E = mc^2"
+         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='24'%3E%3Ctext x='4' y='17' font-style='italic'%3EE = mc%C2%B2%3C/text%3E%3C/svg%3E">
+  </section>
+
+  <section>
+    <h2>4. 原生 MathML（alttext 属性带 LaTeX）</h2>
+    <math xmlns="http://www.w3.org/1998/Math/MathML" alttext="a^2 + b^2 = c^2">
+      <msup><mi>a</mi><mn>2</mn></msup><mo>+</mo><msup><mi>b</mi><mn>2</mn></msup><mo>=</mo><msup><mi>c</mi><mn>2</mn></msup>
+    </math>
+  </section>
+
+  <section>
+    <h2>5. 裸 MathML（无源码，预期走文本转换）</h2>
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <mi>y</mi><mo>=</mo><mn>2</mn><mi>x</mi><mo>+</mo><mn>1</mn>
+    </math>
+  </section>
+
+  <section>
+    <h2>6. 普通文本公式（用于「选中发送」测试，不参与页面提取）</h2>
+    <p id="plain-formula">x = (-b ± sqrt(b^2-4ac))/(2a)</p>
+    <p class="note">选中上面一行 → 右键「用公式助手解释选中内容」或按 Alt+M。</p>
+  </section>
+
+  <section>
+    <h2>7. 视觉公式纯文本（用于转译模式「选中发送」与 NVDA 闭环测试）</h2>
+    <p id="visual-1">样例一：视觉公式 ∫f(x)e^(−iωx)dx 是一个常见积分表达式。</p>
+    <p id="visual-2">样例二：带上下限公式 ∫_{-∞}^{∞} f(x)e^(−iωx) dx。</p>
+    <p id="visual-3">样例三：化学式 H2O、CO2、SO4^2-。</p>
+    <p id="visual-4">样例四：根号 sqrt(3x+1) 与对数 log_2(x)。</p>
+    <p class="note">选中任一行按 Alt+M 或右键送入插件，预期走转译流程（不强制 LaTeX 确认）。</p>
+  </section>
+</body>
+</html>

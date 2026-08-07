@@ -1,0 +1,28 @@
+# 百炼高代码应用配置（结构与官方 modelstudio-agent-starter 示例包对齐）
+
+# app config
+APP_NAME: "math-a11y-assistant"
+DEBUG: false
+
+# Server Config
+FC_START_HOST: "0.0.0.0"
+HOST: "0.0.0.0"
+PORT: 8080
+RELOAD: false
+
+# Setup config
+SETUP_PACKAGE_NAME: "app"
+SETUP_MODULE_NAME: "main"
+SETUP_FUNCTION_NAME: "run_app"
+SETUP_COMMAND_NAME: "math-a11y-assistant"
+SETUP_NAME: "math-a11y-assistant"
+SETUP_VERSION: "0.1.0"
+SETUP_DESCRIPTION: "数学公式无障碍学习助手后端"
+SETUP_LONG_DESCRIPTION: "FastAPI 后端：理科符号转译与公式理解讲解，部署于百炼高代码应用"
+
+# observability config
+TELEMETRY_ENABLE: FALSE
+
+# FC run config（平台把启动命令固化为该路径，包内必须提供 deploy_starter/main.py；
+# 模板创建的应用不会重读本配置生成启动命令，包结构必须与之对齐）
+FC_RUN_CMD: "python3 /code/python/deploy_starter/main.py"

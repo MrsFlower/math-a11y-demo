@@ -1,0 +1,10 @@
+# 云端部署（百炼高代码应用）要求用 == 固定版本，避免构建时拉到不同版本。
+# 版本与本地开发环境（Python 3.14）一致，2026-08-07 pip freeze 核对。
+fastapi==0.140.0
+uvicorn[standard]==0.51.0
+latex2mathml==3.81.0
+httpx==0.28.1
+python-multipart==0.0.32
+python-dotenv==1.2.2
+
+# Optional OCR backend (stage B, heavy): pix2text  -- see README for notes.

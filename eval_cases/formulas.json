@@ -1,0 +1,306 @@
+[
+  {
+    "id": "algebra_quadratic_001",
+    "title": "一元二次方程求根公式",
+    "latex": "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}",
+    "domain": "代数",
+    "expected_keywords": ["判别式", "两个解"],
+    "avoid_overclaim": false,
+    "notes": "强模板样例，应讲清判别式与两个解，允许 high。"
+  },
+  {
+    "id": "algebra_vieta_001",
+    "title": "韦达定理（两根之和）",
+    "latex": "x_1 + x_2 = -\\frac{b}{a}",
+    "domain": "代数",
+    "expected_keywords": ["根", "系数"],
+    "avoid_overclaim": false,
+    "notes": "应讲根与系数的关系，而不是只念加法。"
+  },
+  {
+    "id": "algebra_arith_seq_001",
+    "title": "等差数列通项公式",
+    "latex": "a_n = a_1 + (n-1)d",
+    "domain": "代数",
+    "expected_keywords": ["公差", "第"],
+    "avoid_overclaim": false,
+    "notes": "应讲“从首项出发每步加公差”，d 的角色要说清。"
+  },
+  {
+    "id": "algebra_geom_sum_001",
+    "title": "等比数列前 n 项和",
+    "latex": "S_n = \\frac{a_1(1-q^n)}{1-q}",
+    "domain": "代数",
+    "expected_keywords": ["公比"],
+    "avoid_overclaim": false,
+    "notes": "应说明 q 不等于 1 的前提，公比的作用。"
+  },
+  {
+    "id": "algebra_quadratic_func_001",
+    "title": "二次函数表达式",
+    "latex": "f(x) = ax^2 + bx + c",
+    "domain": "代数",
+    "expected_keywords": ["抛物线", "二次"],
+    "avoid_overclaim": false,
+    "notes": "应讲这是二次函数的一般形式，a 决定开口方向。"
+  },
+  {
+    "id": "calculus_derivative_def_001",
+    "title": "导数定义（极限形式）",
+    "latex": "f'(x) = \\lim_{h \\to 0} \\frac{f(x+h)-f(x)}{h}",
+    "domain": "微积分",
+    "expected_keywords": ["变化率", "趋近"],
+    "avoid_overclaim": false,
+    "notes": "应讲“平均变化率趋近瞬时变化率”，不是只念分数。"
+  },
+  {
+    "id": "calculus_partial_001",
+    "title": "偏导数",
+    "latex": "\\frac{\\partial f}{\\partial x}",
+    "domain": "微积分",
+    "expected_keywords": ["变化率", "固定"],
+    "avoid_overclaim": false,
+    "notes": "应讲“固定其他变量、只看一个方向的变化率”。"
+  },
+  {
+    "id": "calculus_defint_001",
+    "title": "定积分",
+    "latex": "\\int_a^b f(x)\\,dx",
+    "domain": "微积分",
+    "expected_keywords": ["累积", "范围"],
+    "avoid_overclaim": false,
+    "notes": "应讲区间上连续累积，a、b 是范围。"
+  },
+  {
+    "id": "calculus_indefint_001",
+    "title": "不定积分",
+    "latex": "\\int f(x)\\,dx = F(x) + C",
+    "domain": "微积分",
+    "expected_keywords": ["原函数"],
+    "avoid_overclaim": false,
+    "notes": "应讲“求导的逆运算”，C 的含义要说到。"
+  },
+  {
+    "id": "calculus_limit_001",
+    "title": "重要极限 sin x / x",
+    "latex": "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1",
+    "domain": "微积分",
+    "expected_keywords": ["趋近"],
+    "avoid_overclaim": false,
+    "notes": "应讲“x 趋近 0 时比值趋近 1”，那一点本身没有定义。"
+  },
+  {
+    "id": "calculus_fourier_001",
+    "title": "傅里叶变换",
+    "latex": "\\int_{-\\infty}^{\\infty} f(x)e^{-i\\omega x} dx",
+    "domain": "微积分 / 信号分析",
+    "expected_keywords": ["频率", "成分"],
+    "avoid_overclaim": false,
+    "notes": "应解释为频率分析，不只是积分结构。"
+  },
+  {
+    "id": "calculus_taylor_001",
+    "title": "泰勒展开（一般形式）",
+    "latex": "f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n",
+    "domain": "微积分",
+    "expected_keywords": ["近似", "多项式"],
+    "avoid_overclaim": false,
+    "notes": "应讲“用多项式逐阶逼近函数”。"
+  },
+  {
+    "id": "linalg_matrix_001",
+    "title": "二阶矩阵",
+    "latex": "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}",
+    "domain": "线性代数",
+    "expected_keywords": ["行", "列"],
+    "avoid_overclaim": false,
+    "notes": "应讲行列结构，不是念四个字母。"
+  },
+  {
+    "id": "linalg_system_001",
+    "title": "线性方程组（矩阵形式）",
+    "latex": "A\\mathbf{x} = \\mathbf{b}",
+    "domain": "线性代数",
+    "expected_keywords": ["线性", "方程"],
+    "avoid_overclaim": false,
+    "notes": "短公式但含义常见，允许 medium；应讲系数矩阵乘未知向量。"
+  },
+  {
+    "id": "linalg_matmul_001",
+    "title": "矩阵乘法（元素定义）",
+    "latex": "c_{ij} = \\sum_{k=1}^{n} a_{ik} b_{kj}",
+    "domain": "线性代数",
+    "expected_keywords": ["行", "列"],
+    "avoid_overclaim": false,
+    "notes": "应讲“左边取行、右边取列、对应相乘再累加”。"
+  },
+  {
+    "id": "linalg_det_001",
+    "title": "二阶行列式",
+    "latex": "\\det(A) = ad - bc",
+    "domain": "线性代数",
+    "expected_keywords": ["行列式"],
+    "avoid_overclaim": false,
+    "notes": "短公式；能讲到面积/可逆性任一即为亮点。"
+  },
+  {
+    "id": "prob_conditional_001",
+    "title": "条件概率定义",
+    "latex": "P(A|B) = \\frac{P(A \\cap B)}{P(B)}",
+    "domain": "概率统计",
+    "expected_keywords": ["条件", "发生"],
+    "avoid_overclaim": false,
+    "notes": "应讲“在 B 已发生的前提下 A 的概率”，竖线读法要对。"
+  },
+  {
+    "id": "prob_bayes_001",
+    "title": "贝叶斯公式",
+    "latex": "P(A|B) = \\frac{P(B|A)P(A)}{P(B)}",
+    "domain": "概率统计",
+    "expected_keywords": ["更新", "证据"],
+    "avoid_overclaim": false,
+    "notes": "应讲“用新证据更新判断”，先验/后验角色分清。"
+  },
+  {
+    "id": "prob_expect_001",
+    "title": "离散期望",
+    "latex": "E[X] = \\sum_{i} x_i p_i",
+    "domain": "概率统计",
+    "expected_keywords": ["平均", "概率"],
+    "avoid_overclaim": false,
+    "notes": "应讲“按概率加权的长期平均”。"
+  },
+  {
+    "id": "prob_var_001",
+    "title": "方差定义",
+    "latex": "Var(X) = E[(X - E[X])^2]",
+    "domain": "概率统计",
+    "expected_keywords": ["波动", "平均"],
+    "avoid_overclaim": false,
+    "notes": "应讲“偏差平方的平均”，平方防止正负抵消。"
+  },
+  {
+    "id": "prob_normal_001",
+    "title": "正态分布密度函数",
+    "latex": "f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}",
+    "domain": "概率统计",
+    "expected_keywords": ["均值", "分布"],
+    "avoid_overclaim": false,
+    "notes": "应讲钟形曲线、mu 是中心、sigma 是宽窄。"
+  },
+  {
+    "id": "physics_newton2_001",
+    "title": "牛顿第二定律",
+    "latex": "F = ma",
+    "domain": "物理数学",
+    "expected_keywords": ["力", "加速度"],
+    "avoid_overclaim": false,
+    "notes": "极短公式；即使认出牛顿第二定律，置信度也应被校准压低并标注推断，这是保守机制的预期表现。"
+  },
+  {
+    "id": "physics_heat_001",
+    "title": "一维热传导方程",
+    "latex": "\\frac{\\partial T}{\\partial t} = \\alpha \\frac{\\partial^2 T}{\\partial x^2}",
+    "domain": "物理数学",
+    "expected_keywords": ["变化", "扩散"],
+    "avoid_overclaim": false,
+    "notes": "应讲“温度随时间的变化由空间弯曲程度驱动”。"
+  },
+  {
+    "id": "physics_wave_001",
+    "title": "一维波动方程",
+    "latex": "\\frac{\\partial^2 u}{\\partial t^2} = c^2 \\frac{\\partial^2 u}{\\partial x^2}",
+    "domain": "物理数学",
+    "expected_keywords": ["波", "传播"],
+    "avoid_overclaim": false,
+    "notes": "应讲扰动以速度 c 传播。"
+  },
+  {
+    "id": "physics_gauss_001",
+    "title": "高斯定律（微分形式）",
+    "latex": "\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}",
+    "domain": "物理数学",
+    "expected_keywords": ["电场", "散度"],
+    "avoid_overclaim": false,
+    "notes": "应讲“电荷是电场的源”，散度读法要对。"
+  },
+  {
+    "id": "physics_emc2_001",
+    "title": "质能方程",
+    "latex": "E = mc^2",
+    "domain": "物理数学",
+    "expected_keywords": ["能量", "质量"],
+    "avoid_overclaim": false,
+    "notes": "极短公式；同 F=ma，置信度被压低是保守机制的预期表现。"
+  },
+  {
+    "id": "unknown_add_001",
+    "title": "上下文不足：简单加法等式",
+    "latex": "a + b = c",
+    "domain": "未确定",
+    "expected_keywords": ["关系"],
+    "avoid_overclaim": true,
+    "expected_confidence": "low_or_medium",
+    "notes": "不应强行给出具体公式名，应表述为“根据结构推断”。"
+  },
+  {
+    "id": "unknown_funcsum_001",
+    "title": "上下文不足：函数和",
+    "latex": "f(x) = g(x) + h(x)",
+    "domain": "未确定",
+    "expected_keywords": ["组合"],
+    "avoid_overclaim": true,
+    "expected_confidence": "low_or_medium",
+    "notes": "只能说“一个函数拆成两部分之和”，不应命名。"
+  },
+  {
+    "id": "unknown_greek_001",
+    "title": "上下文不足：希腊字母等式",
+    "latex": "\\alpha + \\beta = \\gamma",
+    "domain": "未确定",
+    "expected_keywords": ["关系"],
+    "avoid_overclaim": true,
+    "expected_confidence": "low_or_medium",
+    "notes": "希腊字母无上下文，不应猜测具体学科含义。"
+  },
+  {
+    "id": "unknown_product_001",
+    "title": "上下文不足：乘积等式",
+    "latex": "z = x \\cdot y",
+    "domain": "未确定",
+    "expected_keywords": ["乘"],
+    "avoid_overclaim": true,
+    "expected_confidence": "low_or_medium",
+    "notes": "可能是任何领域的乘法关系，不应装懂。"
+  },
+  {
+    "id": "unknown_ratio_001",
+    "title": "上下文不足：比值定义",
+    "latex": "M = \\frac{p}{q}",
+    "domain": "未确定",
+    "expected_keywords": ["比"],
+    "avoid_overclaim": true,
+    "expected_confidence": "low_or_medium",
+    "notes": "只能说“M 定义为 p 与 q 的比值”，不应编造场景。"
+  },
+  {
+    "id": "ambiguous_sigma_001",
+    "title": "歧义陷阱：σ = F/A（应力？电导率？标准差？）",
+    "latex": "\\sigma = \\frac{F}{A}",
+    "domain": "未确定",
+    "expected_keywords": ["上下文"],
+    "avoid_overclaim": true,
+    "expected_confidence": "low_or_medium",
+    "notes": "σ 在不同学科含义不同（应力/标准差/电导率）。最可能是应力公式，但应提示含义取决于上下文，不应武断选定一种。"
+  },
+  {
+    "id": "ambiguous_k_001",
+    "title": "歧义陷阱：k = y/x（比例系数？斜率？弹性系数？）",
+    "latex": "k = \\frac{y}{x}",
+    "domain": "未确定",
+    "expected_keywords": ["比"],
+    "avoid_overclaim": true,
+    "expected_confidence": "low_or_medium",
+    "notes": "k 可能是比例系数、斜率等多种含义，只应讲“k 是 y 与 x 的比值”，不应编造具体物理场景。"
+  }
+]
