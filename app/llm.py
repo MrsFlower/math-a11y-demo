@@ -738,6 +738,8 @@ def transcribe(text: str, engine: str | None = None, profile: str = "unicode_com
     if forced == "rules" or not config.llm_available():
         r = transcriber.rule_transcribe(text, profile=profile)
         warnings: list[str] = []
+        if forced == "llm" and not config.llm_available():
+            warnings.append("AI 重新转译当前不可用：未配置 LLM_API_KEY 或服务不可用，已返回本地规则结果。")
         if r["residue"]:
             warnings.append(
                 "以下内容规则未能自动转换，请人工核对：" + "、".join(r["residue"]) + "。"
@@ -749,6 +751,7 @@ def transcribe(text: str, engine: str | None = None, profile: str = "unicode_com
             "confidence": r["confidence"],
             "source": "rules",
             "applied": r["applied"],
+            "residue": r["residue"],
             "warnings": warnings,
         }
 
@@ -775,6 +778,7 @@ def transcribe(text: str, engine: str | None = None, profile: str = "unicode_com
                 "confidence": "high" if not warnings else "medium",
                 "source": "llm",
                 "applied": [],
+                "residue": [],
                 "warnings": warnings,
             }
         except Exception as exc:
@@ -787,6 +791,7 @@ def transcribe(text: str, engine: str | None = None, profile: str = "unicode_com
                 "confidence": "medium",
                 "source": "rules",
                 "applied": rule_result["applied"],
+                "residue": rule_result["residue"],
                 "warnings": warnings,
             }
 
@@ -797,5 +802,6 @@ def transcribe(text: str, engine: str | None = None, profile: str = "unicode_com
         "confidence": rule_result["confidence"],
         "source": "rules",
         "applied": rule_result["applied"],
+        "residue": rule_result["residue"],
         "warnings": [],
     }

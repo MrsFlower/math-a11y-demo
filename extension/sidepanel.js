@@ -405,7 +405,8 @@ async function useSelection() {
 
 function setAnalyzing(on) {
   ["extract-btn", "selection-btn", "paste-btn", "confirm-btn", "reextract-btn",
-   "transcribe-copy-btn", "transcribe-save-btn", "transcribe-to-explain-btn"].forEach(
+   "transcribe-copy-btn", "transcribe-save-btn", "transcribe-to-explain-btn",
+   "transcribe-ai-retry-btn", "transcribe-edit-source-btn"].forEach(
     (id) => ($(id).disabled = on)
   );
   $("cancel-btn").hidden = !on;
@@ -413,7 +414,7 @@ function setAnalyzing(on) {
 
 // ---------------- 转译（第五阶段） ----------------
 
-let lastTranscription = null; // { original, result }
+let lastTranscription = null; // { original, result, sourceNote, profile, confidence, warnings, source }
 
 function renderTranscribeWarnings(list) {
   const slot = $("transcribe-warnings");
@@ -430,7 +431,27 @@ function renderTranscribeWarnings(list) {
   slot.hidden = false;
 }
 
-async function startTranscription(text, sourceNote) {
+function renderTranscribeFallback(data) {
+  const warnings = data.warnings || [];
+  const residue = data.residue || [];
+  const lowConfidence = data.confidence === "low";
+  const needsFallback = data.source !== "llm" && (lowConfidence || warnings.length > 0 || residue.length > 0);
+  const aiUnavailable = warnings.some((w) => String(w).includes("AI 重新转译当前不可用"));
+  $("transcribe-fallback").hidden = !needsFallback;
+  $("transcribe-ai-retry-btn").disabled = aiUnavailable;
+  if (!needsFallback) {
+    $("transcribe-fallback-reason").textContent = "";
+    return;
+  }
+  const reasons = [];
+  if (lowConfidence) reasons.push("本次转译置信度低");
+  if (residue.length) reasons.push(`仍有规则未覆盖的记号：${residue.join("、")}`);
+  else if (warnings.length) reasons.push(warnings[0].replace(/。$/, ""));
+  const action = aiUnavailable ? "请打开原文手动修改，或稍后在 AI 服务可用时再试。" : "可以用 AI 重新转译，或打开原文手动修改。";
+  $("transcribe-fallback-reason").textContent = `${reasons.join("；")}。${action}`;
+}
+
+async function startTranscription(text, sourceNote, options) {
   const t = (text || "").trim();
   if (!t) {
     setStatus("没有可转译的内容。", "error");
@@ -444,23 +465,45 @@ async function startTranscription(text, sourceNote) {
   $("candidates").hidden = true;
   const profile = currentTranscribeProfile();
   const profileName = profile === "spoken_structured" ? "结构朗读" : "紧凑文本";
-  setStatus(`正在转译（${sourceNote}，${profileName}）：把读屏读不了的符号转成可读纯文本，不解释…`);
+  const engine = options && options.engine;
+  const retryLabel = engine === "llm" ? "AI 重新转译" : "转译";
+  setStatus(`正在${retryLabel}（${sourceNote}，${profileName}）：把读屏读不了的符号转成可读纯文本，不解释…`);
   try {
-    const data = await apiPost("/api/transcribe-symbols", { text: t, source_type: "selection", profile });
+    const body = { text: t, source_type: "selection", profile };
+    if (engine) body.engine = engine;
+    const data = await apiPost("/api/transcribe-symbols", body);
     if (!data.ok || !data.transcribed_text) {
       setStatus(`转译失败：${data.error || "未知错误"}`, "error");
       return;
     }
-    lastTranscription = { original: t, result: data.transcribed_text };
+    lastTranscription = {
+      original: t,
+      result: data.transcribed_text,
+      sourceNote,
+      profile,
+      confidence: data.confidence,
+      warnings: data.warnings || [],
+      residue: data.residue || [],
+      source: data.source || "",
+    };
     $("transcribe-slot").textContent = data.transcribed_text;
     renderTranscribeWarnings(data.warnings);
+    renderTranscribeFallback(data);
     $("transcribe-section").hidden = false;
     const conf = data.confidence === "high" ? "置信度：高。"
       : data.confidence === "medium" ? "置信度：中，请核对后再使用。"
       : "置信度：低，请重点核对。";
     const tip = data.warnings && data.warnings.length ? `有 ${data.warnings.length} 条提醒，请核对。` : "";
-    setStatus(`转译完成。${conf}${tip}焦点在「复制转译结果」按钮，按回车复制；也可保存到历史或转去理解模式。`);
-    $("transcribe-copy-btn").focus();
+    if (!$("transcribe-fallback").hidden) {
+      const aiRetryDisabled = $("transcribe-ai-retry-btn").disabled;
+      const focusTarget = aiRetryDisabled ? "transcribe-edit-source-btn" : "transcribe-ai-retry-btn";
+      const focusText = aiRetryDisabled ? "手动修改或粘贴" : "用 AI 重新转译";
+      setStatus(`转译完成。${conf}${tip}${aiRetryDisabled ? "AI 重新转译当前不可用，" : ""}可手动修改原文。焦点在「${focusText}」按钮。`);
+      $(focusTarget).focus();
+    } else {
+      setStatus(`转译完成。${conf}${tip}焦点在「复制转译结果」按钮，按回车复制；也可进一步讲解这个公式。`);
+      $("transcribe-copy-btn").focus();
+    }
   } catch (e) {
     setStatus(backendDownMsg(e), "error");
   }
@@ -479,6 +522,18 @@ function transcribeToExplain() {
   radio.dispatchEvent(new Event("change"));
   $("transcribe-section").hidden = true;
   handleIncomingText(lastTranscription.original, "转译结果转理解");
+}
+
+function retryTranscriptionWithAi() {
+  if (!lastTranscription) return;
+  startTranscription(lastTranscription.original, "AI 重新转译", { engine: "llm" });
+}
+
+function editTranscriptionSource() {
+  if (!lastTranscription) return;
+  focusTextInput("原文已放入手动粘贴框。你可以修改后重新转译。");
+  $("paste-input").value = lastTranscription.original;
+  $("paste-input").focus();
 }
 
 async function analyze() {
@@ -743,10 +798,11 @@ function renderHistory(items) {
         lastTranscription = { original: it.original, result: it.result };
         $("transcribe-slot").textContent = it.result;
         renderTranscribeWarnings([]);
+        renderTranscribeFallback({ source: "history", confidence: "high", warnings: [], residue: [] });
         $("result-section").hidden = true;
         $("ask-section").hidden = true;
         $("transcribe-section").hidden = false;
-        setStatus("已从历史载入转译结果，可复制或转去理解模式。");
+        setStatus("已从历史载入转译结果，可复制或进一步讲解这个公式。");
         $("transcribe-copy-btn").focus();
       });
       copyBtn.textContent = "复制结果";
@@ -853,6 +909,8 @@ $("transcribe-copy-btn").addEventListener("click", () =>
 );
 $("transcribe-save-btn").addEventListener("click", saveTranscription);
 $("transcribe-to-explain-btn").addEventListener("click", transcribeToExplain);
+$("transcribe-ai-retry-btn").addEventListener("click", retryTranscriptionWithAi);
+$("transcribe-edit-source-btn").addEventListener("click", editTranscriptionSource);
 $("confirm-btn").addEventListener("click", analyze);
 $("reextract-btn").addEventListener("click", () => {
   $("confirm-box").hidden = true;

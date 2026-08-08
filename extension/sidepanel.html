@@ -213,10 +213,15 @@
     <h2 id="transcribe-heading" tabindex="-1">转译结果</h2>
     <div id="transcribe-warnings" class="warn-box" role="note" aria-label="转译提醒" hidden></div>
     <pre id="transcribe-slot" aria-label="转译后的纯文本"></pre>
+    <div id="transcribe-fallback" class="warn-box" role="note" aria-label="低置信度兜底操作" hidden>
+      <p id="transcribe-fallback-reason"></p>
+      <button id="transcribe-ai-retry-btn" class="secondary" aria-label="用AI重新转译当前公式">用 AI 重新转译</button>
+      <button id="transcribe-edit-source-btn" class="secondary" aria-label="打开手动粘贴框并放入原文">手动修改或粘贴</button>
+    </div>
     <p>
       <button id="transcribe-copy-btn" aria-label="复制转译结果">复制转译结果</button>
       <button id="transcribe-save-btn" class="secondary" aria-label="保存本次转译到历史记录">保存到历史</button>
-      <button id="transcribe-to-explain-btn" class="secondary" aria-label="把原文送入理解模式进一步讲解">转去理解模式</button>
+      <button id="transcribe-to-explain-btn" class="secondary" aria-label="把原文送入理解模式进一步讲解">进一步讲解这个公式</button>
     </p>
   </section>
 
