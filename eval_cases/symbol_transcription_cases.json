@@ -271,6 +271,37 @@
     ]
   },
   {
+    "id": "latex_cases_piecewise",
+    "category": "LaTeX分段函数",
+    "text": "函数 f(x)=\\begin{cases} -x, & \\text{if } x<0 \\\\ x, & \\text{if } x\\ge 0 \\end{cases}。",
+    "expected": [
+      "分段：",
+      "当 x<0 时，-x",
+      "当 x≥0 时，x"
+    ],
+    "forbidden": [
+      "\\begin",
+      "\\end",
+      "\\text",
+      "\\ge"
+    ]
+  },
+  {
+    "id": "latex_cases_otherwise",
+    "category": "LaTeX分段函数",
+    "text": "g(x)=\\begin{cases} x^2 & x>0 \\\\ 0 & \\text{otherwise} \\end{cases}。",
+    "expected": [
+      "分段：",
+      "当 x>0 时，x²",
+      "否则，0"
+    ],
+    "forbidden": [
+      "\\begin",
+      "\\end",
+      "\\text"
+    ]
+  },
+  {
     "id": "unit_acceleration",
     "category": "物理单位",
     "text": "重力加速度约为 9.8 m/s^2。",

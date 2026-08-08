@@ -181,6 +181,33 @@ def _normalize_attached_braced_scripts(text: str) -> tuple[str, list[str]]:
     return "".join(out), applied
 
 
+def _split_latex_rows(text: str) -> list[str]:
+    return [part.strip() for part in re.split(r"\\\\(?:\s*\[[^\]]+\])?", text) if part.strip()]
+
+
+def _normalize_cases_body(body: str) -> tuple[str, list[str]]:
+    rows: list[str] = []
+    applied: list[str] = []
+    for row in _split_latex_rows(body):
+        if "&" in row:
+            value, condition = row.split("&", 1)
+            value, value_rules = _normalize_latex_structures(value.strip())
+            condition, condition_rules = _normalize_latex_structures(condition.strip())
+            applied.extend(value_rules)
+            applied.extend(condition_rules)
+            cond = condition.strip()
+            if re.search(r"\b(otherwise|else)\b|其他|否则", cond, re.I):
+                rows.append(f"否则，{value}")
+            else:
+                cond = re.sub(r"^(if|when)\s+", "", cond, flags=re.I).strip()
+                rows.append(f"当 {cond} 时，{value}")
+        else:
+            value, value_rules = _normalize_latex_structures(row)
+            applied.extend(value_rules)
+            rows.append(value)
+    return "分段：" + "；".join(rows), applied
+
+
 def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
     """配对扫描 LaTeX 核心结构，避免正则只能处理一层花括号。
 
@@ -191,6 +218,25 @@ def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
     applied: list[str] = []
     i = 0
     while i < len(text):
+        if _has_command_boundary(text, i, "\\text"):
+            group = _read_balanced(text, i + len("\\text"), "{", "}")
+            if group:
+                out.append(group[0])
+                applied.append("LaTeX结构扫描-文本")
+                i = group[1]
+                continue
+
+        if text.startswith("\\begin{cases}", i):
+            end_idx = text.find("\\end{cases}", i + len("\\begin{cases}"))
+            if end_idx != -1:
+                body = text[i + len("\\begin{cases}"):end_idx]
+                cases_text, cases_rules = _normalize_cases_body(body)
+                out.append(cases_text)
+                applied.extend(cases_rules)
+                applied.append("LaTeX结构扫描-分段函数")
+                i = end_idx + len("\\end{cases}")
+                continue
+
         frac_cmd = next((cmd for cmd in ("\\dfrac", "\\tfrac", "\\frac") if _has_command_boundary(text, i, cmd)), None)
         if frac_cmd:
             first = _read_balanced(text, i + len(frac_cmd), "{", "}")
