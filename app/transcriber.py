@@ -50,7 +50,12 @@ def _latex_int(m: re.Match) -> str:
 
 
 def _latex_lim(m: re.Match) -> str:
-    return f"lim({m.group(1)}→{m.group(2)})"
+    # 花括号内可能是 "x" 也可能是 "x \to 0"：按箭头拆，不能假设固定分组数
+    inner = m.group(1).strip()
+    parts = re.split(r"\\to|\\rightarrow|->", inner, maxsplit=1)
+    if len(parts) == 2:
+        return f"lim({parts[0].strip()}→{parts[1].strip()})"
+    return f"lim({inner})"
 
 
 def _sup_inner(inner: str) -> str:
@@ -61,38 +66,54 @@ def _sup_inner(inner: str) -> str:
     return "^(" + inner + ")"
 
 
-# (模式名, 正则, 替换) —— 顺序有意义：先结构化命令，后记号级替换
+# (模式名, 正则, 替换) —— 顺序有意义：先结构化命令，后记号级替换。
+# 字母命令一律带 (?![a-zA-Z]) 词边界：否则短命令会吃长命令的前缀
+# （\in 误伤 \int/\iint/\infty；\to 误伤 \top；\lim 误伤 \limsup）。
 _LATEX_RULES: list[tuple[str, re.Pattern, str | object]] = [
+    ("LaTeX行间定界符", re.compile(r"\\\[\s*|\s*\\\]"), " "),
+    ("LaTeX美元定界符", re.compile(r"\$\$\s*|\$"), ""),
     ("LaTeX空白", re.compile(r"\\[,;!]\s*|\\\s+"), " "),
     ("LaTeX分式", re.compile(r"\\[dD]?frac\{([^{}]*)\}\{([^{}]*)\}"), _latex_frac),
     ("LaTeX多次根号", re.compile(r"\\sqrt\[([^\]]*)\]\{([^{}]*)\}"), lambda m: f"{m.group(1)}次√({m.group(2)})"),
     ("LaTeX根号", re.compile(r"\\sqrt\{([^{}]*)\}"), lambda m: f"√({m.group(1)})"),
+    # 积分：带上下限先走结构化规则；裸 \iint/\iiint/\oint 必须在 \int 之前（长前缀优先）
     ("LaTeX定积分", re.compile(r"\\int_\{?([^{}\s]+)\}?\^\{?([^{}\s]+)\}?\s*"), _latex_int),
-    ("LaTeX极限", re.compile(r"\\lim_\{?([^{}\s]+)\}?\s*(?:\\to|\\rightarrow)\s*"), _latex_lim),
-    ("LaTeX无穷", re.compile(r"\\infty\s*"), "∞"),
-    ("LaTeX不属于", re.compile(r"\\notin\s*"), "∉"),
+    ("LaTeX二重积分", re.compile(r"\\iint(?![a-zA-Z])\s*"), "∬"),
+    ("LaTeX三重积分", re.compile(r"\\iiint(?![a-zA-Z])\s*"), "∭"),
+    ("LaTeX曲线积分", re.compile(r"\\oint(?![a-zA-Z])\s*"), "∮"),
+    ("LaTeX积分", re.compile(r"\\int(?![a-zA-Z])\s*"), "∫"),
+    # \lim_{x\to 0} / \lim_{n} 统一取花括号整体，repl 内部再拆箭头（避免分组 500）
+    ("LaTeX极限", re.compile(r"\\lim_\{([^{}]*)\}\s*"), _latex_lim),
+    ("LaTeX极限号", re.compile(r"\\lim(?![a-zA-Z])\s*"), "极限"),
+    # 常见函数名：去反斜杠保留名称；长名在前（arcsin 先于 sin，sinh 先于 sin），
+    # 否则会被短名前缀吃掉。不补这条，\sin/\ln 残留会每次都静默落到 LLM 兑底烧额度
+    ("LaTeX函数名",
+     re.compile(r"\\(arcsin|arccos|arctan|sinh|cosh|tanh|sin|cos|tan|cot|sec|csc|ln|log|exp|max|min|sup|inf|det|deg|gcd|arg)(?![a-zA-Z])\s*"),
+     lambda m: m.group(1)),
+    ("LaTeX无穷", re.compile(r"\\infty(?![a-zA-Z])\s*"), "∞"),
+    ("LaTeX不属于", re.compile(r"\\notin(?![a-zA-Z])\s*"), "∉"),
     ("LaTeX指数", re.compile(r"(?<=[\w)\]])\^\{([^{}]*)\}"), lambda m: _sup_inner(m.group(1))),
-    ("LaTeX角", re.compile(r"\\angle\s*"), "∠"),
-    ("LaTeX三角形", re.compile(r"\\triangle\s*"), "△"),
-    ("LaTeX平行", re.compile(r"\\parallel\s*"), "∥"),
-    ("LaTeX垂直", re.compile(r"\\perp\s*"), "⊥"),
-    ("LaTeX属于", re.compile(r"\\in\s*"), "∈"),
-    ("LaTeX包含于", re.compile(r"\\subseteq\s*"), "⊆"),
-    ("LaTeX交", re.compile(r"\\cap\s*"), "∩"),
-    ("LaTeX并", re.compile(r"\\cup\s*"), "∪"),
-    ("LaTeX圆周率", re.compile(r"\\pi\s*"), "π"),
-    ("LaTeX角度", re.compile(r"\\circ\s*"), "°"),
-    ("LaTeX正负", re.compile(r"\\pm\s*"), "±"),
+    ("LaTeX角", re.compile(r"\\angle(?![a-zA-Z])\s*"), "∠"),
+    ("LaTeX三角形", re.compile(r"\\triangle(?![a-zA-Z])\s*"), "△"),
+    ("LaTeX平行", re.compile(r"\\parallel(?![a-zA-Z])\s*"), "∥"),
+    ("LaTeX垂直", re.compile(r"\\perp(?![a-zA-Z])\s*"), "⊥"),
+    ("LaTeX属于", re.compile(r"\\in(?![a-zA-Z])\s*"), "∈"),
+    ("LaTeX包含于", re.compile(r"\\subseteq(?![a-zA-Z])\s*"), "⊆"),
+    ("LaTeX交", re.compile(r"\\cap(?![a-zA-Z])\s*"), "∩"),
+    ("LaTeX并", re.compile(r"\\cup(?![a-zA-Z])\s*"), "∪"),
+    ("LaTeX圆周率", re.compile(r"\\pi(?![a-zA-Z])\s*"), "π"),
+    ("LaTeX角度", re.compile(r"\\circ(?![a-zA-Z])\s*"), "°"),
+    ("LaTeX正负", re.compile(r"\\pm(?![a-zA-Z])\s*"), "±"),
     ("LaTeX希腊字母", re.compile(r"\\(alpha|beta|gamma|theta|lambda|mu|rho|sigma|omega)\b"),
      lambda m: {"alpha": "α", "beta": "β", "gamma": "γ", "theta": "θ",
                 "lambda": "λ", "mu": "μ", "rho": "ρ", "sigma": "σ", "omega": "ω"}[m.group(1)]),
-    ("LaTeX乘号", re.compile(r"\\times\s*"), "×"),
-    ("LaTeX除号", re.compile(r"\\div\s*"), "÷"),
-    ("LaTeX小于等于", re.compile(r"\\leq?\s*"), "≤"),
-    ("LaTeX大于等于", re.compile(r"\\geq?\s*"), "≥"),
-    ("LaTeX不等于", re.compile(r"\\neq?\s*"), "≠"),
-    ("LaTeX箭头", re.compile(r"\\to\s*|\\rightarrow\s*"), "→"),
-    ("LaTeX可逆反应", re.compile(r"\\rightleftharpoons\s*"), "⇌"),
+    ("LaTeX乘号", re.compile(r"\\times(?![a-zA-Z])\s*"), "×"),
+    ("LaTeX除号", re.compile(r"\\div(?![a-zA-Z])\s*"), "÷"),
+    ("LaTeX小于等于", re.compile(r"\\le(?![a-zA-Z])\s*|\\leq(?![a-zA-Z])\s*"), "≤"),
+    ("LaTeX大于等于", re.compile(r"\\ge(?![a-zA-Z])\s*|\\geq(?![a-zA-Z])\s*"), "≥"),
+    ("LaTeX不等于", re.compile(r"\\ne(?![a-zA-Z])\s*|\\neq(?![a-zA-Z])\s*"), "≠"),
+    ("LaTeX箭头", re.compile(r"\\to(?![a-zA-Z])\s*|\\rightarrow(?![a-zA-Z])\s*"), "→"),
+    ("LaTeX可逆反应", re.compile(r"\\rightleftharpoons(?![a-zA-Z])\s*"), "⇌"),
 ]
 
 # ---------- 普通文本记号规则 ----------
@@ -225,6 +246,118 @@ def transcribe_by_rules(text: str) -> tuple[str, list[str], list[str]]:
     return out, applied, residue
 
 
+# ---------- 结构朗读辅助（spoken_structured：分式/根号/上下标/正负号口语化） ----------
+
+_SUP_DIGITS = {"⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5",
+               "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁺": "+", "⁻": "-", "ⁿ": "n"}
+_SUP_RUN = re.compile(r"(?<=[A-Za-z0-9)\]】])[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ]+")
+
+
+def _speak_sup_run(m: re.Match) -> str:
+    plain = "".join(_SUP_DIGITS.get(c, c) for c in m.group(0))
+    if plain == "2":
+        return " 的平方"
+    if plain == "3":
+        return " 的立方"
+    return f" 的 {plain.replace('-', '负')} 次方"
+
+
+def _match_open_paren(text: str, close_idx: int) -> int:
+    """从 close_idx 处的右括号向前找到配对左括号，找不到返回 -1。"""
+    depth = 0
+    for i in range(close_idx, -1, -1):
+        if text[i] == ")":
+            depth += 1
+        elif text[i] == "(":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _match_close_paren(text: str, open_idx: int) -> int:
+    """从 open_idx 处的左括号向后找到配对右括号，找不到返回 -1。"""
+    depth = 0
+    for i in range(open_idx, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _speak_expr(s: str) -> str:
+    """把紧凑数学片段完全口语化（上下标/根号/正负/运算符），供分式分子分母内部使用。"""
+    out = _SUP_RUN.sub(_speak_sup_run, s)
+    out = _speak_sqrt(out)
+    out = out.replace("±", " 加减 ")
+    out = out.replace("×", " 乘以 ")
+    # 二元减号（前面有词项）读「减」，一元负号（开头/左括号后）读「负」；
+    # 前瞻只排除 ASCII 字母数字：Python 的 \w 含中文，否则「平方-4ac」永远不触发；
+    # 减号两侧允许空格（LaTeX 风格 x - y），整段连空格一起替换
+    out = re.sub(r"(?<=[A-Za-z0-9)\u4e00-\u9fff²³⁴⁵⁶⁷⁸⁹])\s*-\s*(?=[A-Za-z0-9\u4e00-\u9fff])", " 减 ", out)
+    out = re.sub(r"(?<![A-Za-z0-9])-(?=[A-Za-z0-9\u4e00-\u9fff])", "负 ", out)
+    out = out.replace("+", " 加 ")
+    out = out.replace("=", " 等于 ")
+    return re.sub(r"\s+", " ", out).strip()
+
+
+def _speak_sqrt(text: str) -> str:
+    """√(配对括号) → 根号下…（递归口语化）；√简单记号 → 根号记号。"""
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        if text[i] == "√":
+            if i + 1 < len(text) and text[i + 1] == "(":
+                end = _match_close_paren(text, i + 1)
+                if end != -1:
+                    out.append("根号 " + _speak_expr(text[i + 2:end]))
+                    i = end + 1
+                    continue
+            else:
+                m = re.match(r"[0-9A-Za-z]+", text[i + 1:])
+                if m:
+                    out.append("根号 " + m.group(0))
+                    i += 1 + m.end()
+                    continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
+
+
+def _speak_fractions(text: str) -> tuple[str, int]:
+    """(分子)/(分母) → 分母 分之 括号分子括号；括号配对扫描，支持嵌套。"""
+    n = 0
+    while n < 20:
+        m = re.search(r"\)\s*/\s*", text)
+        if not m:
+            break
+        close_idx = m.start()
+        open_idx = _match_open_paren(text, close_idx)
+        if open_idx == -1:
+            break
+        after = m.end()
+        rest = text[after:]
+        if rest.startswith("("):
+            d_end = _match_close_paren(text, after)
+            if d_end == -1:
+                break
+            den = _speak_expr(text[after + 1:d_end])
+            end = d_end + 1
+        else:
+            dm = re.match(r"[0-9A-Za-z]+", rest)
+            if not dm:
+                break
+            den = _speak_expr(dm.group(0))
+            end = after + dm.end()
+        num = _speak_expr(text[open_idx + 1:close_idx])
+        text = text[:open_idx] + f"{den} 分之，括号 {num} 括号" + text[end:]
+        n += 1
+    return text, n
+
+
 def _speak_atom(text: str) -> str:
     """把紧凑数学片段转成更适合读屏连续朗读的结构文本。"""
     out = text.strip()
@@ -232,7 +365,8 @@ def _speak_atom(text: str) -> str:
     out = out.replace("∞", "无穷")
     for sym, spoken in _GREEK_SPOKEN.items():
         out = out.replace(sym, spoken)
-    out = re.sub(r"(?<![\w])-(?=[A-Za-z0-9\u4e00-\u9fff])", "负 ", out)
+    out = re.sub(r"(?<=[A-Za-z0-9)\u4e00-\u9fff²³⁴⁵⁶⁷⁸⁹])\s*-\s*(?=[A-Za-z0-9\u4e00-\u9fff])", " 减 ", out)
+    out = re.sub(r"(?<![A-Za-z0-9])-(?=[A-Za-z0-9\u4e00-\u9fff])", "负 ", out)
 
     def exp_repl(m: re.Match) -> str:
         base = m.group(1)
@@ -278,6 +412,24 @@ def to_spoken_structured(text: str) -> tuple[str, list[str]]:
     out, n = re.subn(r"([A-Za-z])\^\(([^()]*)\)", lambda m: f"{m.group(1)} 的 {_speak_atom(m.group(2))} 次方", out)
     if n:
         applied.append("结构朗读-指数")
+
+    # 分式：(分子)/(分母) → 分母 分之 括号分子括号（求根公式这类场景的核心）
+    out, n = _speak_fractions(out)
+    if n:
+        applied.append("结构朗读-分式")
+
+    # 分式之外残留的 Unicode 上标 / 根号 / 正负号，也要口语化
+    new_out = _SUP_RUN.sub(_speak_sup_run, out)
+    if new_out != out:
+        applied.append("结构朗读-上标")
+        out = new_out
+    new_out = _speak_sqrt(out)
+    if new_out != out:
+        applied.append("结构朗读-根号")
+        out = new_out
+    if "±" in out:
+        out = out.replace("±", " 加减 ")
+        applied.append("结构朗读-正负")
 
     out = _speak_atom(out)
     return out, applied

@@ -42,7 +42,51 @@ async function loadShortcutPrefs() {
 async function readSelection(tab) {
   const [ret] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    func: () => window.getSelection().toString(),
+    // 不能直接 getSelection().toString()：KaTeX 渲染的公式被选中时，
+    // 隐藏的 MathML 读屏层会逐字泄进选区（「𝑥\n→\n0\nx→0」双层乱码），
+    // 后端规则全部失配。这里克隆选区，把渲染公式容器替换成 $LaTeX$ 源码；
+    // 拿不到源码时只剔除读屏回退层，保留视觉层文本。
+    func: () => {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return "";
+      const holder = document.createElement("div");
+      holder.appendChild(sel.getRangeAt(0).cloneContents());
+      // 块级边界插换行占位：否则选项列表（A/B/C/D）会连成一串
+      const BLOCKS = new Set(["P", "LI", "DIV", "UL", "OL", "TR", "BR", "H1", "H2", "H3", "H4", "SECTION", "ARTICLE", "BLOCKQUOTE", "PRE"]);
+      holder.querySelectorAll("*").forEach((n) => {
+        if (BLOCKS.has(n.tagName)) n.insertAdjacentText("afterend", "\n");
+      });
+      const texOf = (root) => {
+        const ann = root.querySelector('annotation[encoding="application/x-tex"]');
+        if (ann && ann.textContent.trim()) return ann.textContent.trim();
+        const scr = root.querySelector('script[type*="math"]');
+        if (scr && scr.textContent.trim()) return scr.textContent.trim();
+        return "";
+      };
+      holder.querySelectorAll(".katex, mjx-container, .MathJax_Display, .MathJax").forEach((el) => {
+        if (!holder.contains(el)) return; // 已随外层容器被替换
+        const tex = texOf(el);
+        if (tex) {
+          el.replaceWith(document.createTextNode(" $" + tex + "$ "));
+        } else {
+          el.querySelectorAll(".katex-mathml, mjx-assistive-mml, annotation").forEach((n) => n.remove());
+        }
+      });
+      holder.querySelectorAll("math").forEach((m) => {
+        if (!holder.contains(m)) return;
+        const alt = m.getAttribute("alttext");
+        if (alt) {
+          m.replaceWith(document.createTextNode(" $" + alt + "$ "));
+        } else {
+          m.querySelectorAll("mjx-assistive-mml, annotation").forEach((n) => n.remove());
+        }
+      });
+      return (holder.textContent || "")
+        .split("\n")
+        .map((s) => s.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join("\n");
+    },
   });
   return (ret && ret.result || "").trim();
 }
@@ -58,11 +102,30 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   });
 });
 
-chrome.commands.onCommand.addListener(async (command) => {
+chrome.commands.onCommand.addListener(async (command, cmdTab) => {
   if (command !== "capture-selection") return;
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) return;
-  chrome.sidePanel.open({ tabId: tab.id });
+  console.log("[公式助手] 快捷键触发:", command);
+  // open() 必须在手势调用栈内同步调用：不能先 await，
+  // 直接用 onCommand 第二参带回的活动 tab
+  const tab = cmdTab || await chrome.tabs.query({ active: true, currentWindow: true }).then(r => r[0]);
+  if (!tab) {
+    chrome.storage.local.set({ __shortcut_debug: { stage: "no-tab", time: Date.now() } });
+    return;
+  }
+  try {
+    chrome.sidePanel.open({ tabId: tab.id }).catch((e) => {
+      console.error("[公式助手] sidePanel.open 失败:", e);
+      chrome.storage.local.set({ __shortcut_debug: {
+        stage: "open-failed", error: String(e && e.message || e),
+        tabId: tab.id, url: (tab.url || "").slice(0, 80), time: Date.now() } });
+    });
+    chrome.storage.local.set({ __shortcut_debug: {
+      stage: "open-called", tabId: tab.id,
+      url: (tab.url || "").slice(0, 80), time: Date.now() } });
+  } catch (e) {
+    chrome.storage.local.set({ __shortcut_debug: {
+      stage: "open-throw", error: String(e && e.message || e), time: Date.now() } });
+  }
 
   const prefs = await loadShortcutPrefs();
   if (!prefs.setupDone) {

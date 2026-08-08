@@ -13,7 +13,8 @@
 <body>
   <h1>插件捕获测试页</h1>
   <p class="note">本页手工构造了各渲染器的真实 DOM 结构（不加载 CDN，离线可测）。
-    预期「提取本页公式」找到 5 条：前 4 条 kind=latex，第 5 条 kind=text。</p>
+    预期「提取本页公式」找到 10 条：场景 1-5 是 5 条渲染结构（前 4 条 kind=latex，第 5 条 kind=text），
+    场景 6 的 1 条与场景 7 的 4 条是正文纯文本公式（kind=text，共 5 条）。</p>
 
   <section>
     <h2>1. KaTeX 结构（annotation 自带 LaTeX）</h2>
@@ -58,18 +59,18 @@
   </section>
 
   <section>
-    <h2>6. 普通文本公式（用于「选中发送」测试，不参与页面提取）</h2>
+    <h2>6. 普通文本公式（参与页面提取 kind=text，也可「选中发送」测试）</h2>
     <p id="plain-formula">x = (-b ± sqrt(b^2-4ac))/(2a)</p>
-    <p class="note">选中上面一行 → 右键「用公式助手解释选中内容」或按 Alt+M。</p>
+    <p class="note">选中上面一行 → 右键「用公式助手解释选中内容」或按 Ctrl+Shift+M。</p>
   </section>
 
   <section>
-    <h2>7. 视觉公式纯文本（用于转译模式「选中发送」与 NVDA 闭环测试）</h2>
+    <h2>7. 视觉公式纯文本（参与页面提取，也用于转译模式「选中发送」与 NVDA 闭环测试）</h2>
     <p id="visual-1">样例一：视觉公式 ∫f(x)e^(−iωx)dx 是一个常见积分表达式。</p>
     <p id="visual-2">样例二：带上下限公式 ∫_{-∞}^{∞} f(x)e^(−iωx) dx。</p>
     <p id="visual-3">样例三：化学式 H2O、CO2、SO4^2-。</p>
     <p id="visual-4">样例四：根号 sqrt(3x+1) 与对数 log_2(x)。</p>
-    <p class="note">选中任一行按 Alt+M 或右键送入插件，预期走转译流程（不强制 LaTeX 确认）。</p>
+    <p class="note">选中任一行按 Ctrl+Shift+M 或右键送入插件，预期走转译流程（不强制 LaTeX 确认）。</p>
   </section>
 </body>
 </html>

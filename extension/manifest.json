@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "数学公式无障碍学习助手",
-  "version": "0.6.2",
+  "version": "0.6.6",
   "description": "选中或提取当前页面的公式，转译成读屏友好的纯文本，或获得中文讲解，可追问、可回看。默认连接云端服务，开箱即用；也可在侧边栏「服务设置」改为本机服务。",
   "icons": {
     "16": "icons/icon16.png",
@@ -24,7 +24,7 @@
   },
   "commands": {
     "capture-selection": {
-      "suggested_key": { "default": "Shift+Alt+M" },
+      "suggested_key": { "default": "Ctrl+Shift+M" },
       "description": "按已保存的默认模式处理公式或打开输入"
     }
   }

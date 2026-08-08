@@ -3,212 +3,340 @@
     "id": "sqrt_basic",
     "category": "根号",
     "text": "已知函数 f(x)=sqrt(3x+1)，求其定义域。",
-    "expected": ["√(3x+1)"]
+    "expected": [
+      "√(3x+1)"
+    ]
   },
   {
     "id": "nth_root",
     "category": "多次根号",
     "text": "化简 \\sqrt[3]{x} 与 \\sqrt[n]{a+b}。",
-    "expected": ["3次√(x)", "n次√(a+b)"]
+    "expected": [
+      "3次√(x)",
+      "n次√(a+b)"
+    ]
   },
   {
     "id": "superscript_simple",
     "category": "上标",
     "text": "展开 (x+1)^2，注意 x^3 与 x^n 的项。",
-    "expected": ["(x+1)²", "x³", "xⁿ"]
+    "expected": [
+      "(x+1)²",
+      "x³",
+      "xⁿ"
+    ]
   },
   {
     "id": "superscript_complex_keep",
     "category": "复杂上标",
     "text": "等比数列通项为 2^(n-1)。",
-    "expected": ["2^(n-1)"]
+    "expected": [
+      "2^(n-1)"
+    ]
   },
   {
     "id": "subscript_simple",
     "category": "下标",
     "text": "设 a_1 = 1，前 n 项和为 S_n。",
-    "expected": ["a₁", "Sₙ"]
+    "expected": [
+      "a₁",
+      "Sₙ"
+    ]
   },
   {
     "id": "subscript_sequence",
     "category": "数列下标",
     "text": "若 a_{n+1} = 2a_n，求通项。",
-    "expected": ["aₙ₊₁", "aₙ"]
+    "expected": [
+      "aₙ₊₁",
+      "aₙ"
+    ]
   },
   {
     "id": "log_base",
     "category": "对数",
     "text": "求 log_2(x) 与 log_a(x) 的定义域。",
-    "expected": ["log₂(x)", "logₐ(x)"]
+    "expected": [
+      "log₂(x)",
+      "logₐ(x)"
+    ]
   },
   {
     "id": "ln_keep",
     "category": "自然对数",
     "text": "对 ln(x) 求导。",
-    "expected": ["ln(x)"],
-    "forbidden": ["logₑ", "ln₂"]
+    "expected": [
+      "ln(x)"
+    ],
+    "forbidden": [
+      "logₑ",
+      "ln₂"
+    ]
   },
   {
     "id": "fraction_paren_keep",
     "category": "分数",
     "text": "化简 (x+1)/(x+2)。",
-    "expected": ["(x+1)/(x+2)"]
+    "expected": [
+      "(x+1)/(x+2)"
+    ]
   },
   {
     "id": "latex_fraction",
     "category": "LaTeX分数",
     "text": "计算 \\frac{x+1}{x+2} 的极限。",
-    "expected": ["(x+1)/(x+2)"]
+    "expected": [
+      "(x+1)/(x+2)"
+    ]
   },
   {
     "id": "set_membership",
     "category": "集合",
     "text": "若 x in A 且 A in B，判断关系。",
-    "expected": ["∈"]
+    "expected": [
+      "∈"
+    ]
   },
   {
     "id": "interval_infinity",
     "category": "区间",
     "text": "解集为 [-1, +infinity)。",
-    "expected": ["[-1, +∞)"]
+    "expected": [
+      "[-1, +∞)"
+    ]
   },
   {
     "id": "angle",
     "category": "角",
     "text": "如图，\\angle A = 60°。",
-    "expected": ["∠A"]
+    "expected": [
+      "∠A"
+    ]
   },
   {
     "id": "triangle",
     "category": "三角形",
     "text": "在 triangle ABC 中，AB = AC。",
-    "expected": ["△ABC"]
+    "expected": [
+      "△ABC"
+    ]
   },
   {
     "id": "parallel_perpendicular",
     "category": "平行垂直",
     "text": "已知 AB parallel CD，EF perpendicular CD。",
-    "expected": ["∥", "⊥"]
+    "expected": [
+      "∥",
+      "⊥"
+    ]
   },
   {
     "id": "limit",
     "category": "极限",
     "text": "求 lim x->0 f(x) 的值。",
-    "expected": ["lim(x→0)"]
+    "expected": [
+      "lim(x→0)"
+    ]
   },
   {
     "id": "definite_integral",
     "category": "定积分",
     "text": "计算 \\int_a^b f(x) dx。",
-    "expected": ["积分(从 a 到 b)"]
+    "expected": [
+      "积分(从 a 到 b)"
+    ]
   },
   {
     "id": "unit_acceleration",
     "category": "物理单位",
     "text": "重力加速度约为 9.8 m/s^2。",
-    "expected": ["m/s²"]
+    "expected": [
+      "m/s²"
+    ]
   },
   {
     "id": "unit_volume",
     "category": "体积单位",
     "text": "该容器容积为 500 cm^3。",
-    "expected": ["cm³"]
+    "expected": [
+      "cm³"
+    ]
   },
   {
     "id": "delta_change",
     "category": "变化量",
     "text": "记录温度变化 Delta t 与能量变化 Delta E。",
-    "expected": ["Δt", "ΔE"]
+    "expected": [
+      "Δt",
+      "ΔE"
+    ]
   },
   {
     "id": "temperature_no_false_positive",
     "category": "温度防误转",
     "text": "这杯水是 30 C 的温水，字母 C 是等级记号。",
-    "expected": ["30 C"],
-    "forbidden": ["30℃"]
+    "expected": [
+      "30 C"
+    ],
+    "forbidden": [
+      "30℃"
+    ]
   },
   {
     "id": "temperature_valid",
     "category": "温度合法形式",
     "text": "体温 36.5°C 属正常。",
-    "expected": ["36.5℃"]
+    "expected": [
+      "36.5℃"
+    ]
   },
   {
     "id": "chem_water",
     "category": "化学式",
     "text": "水的化学式是 H2O。",
-    "expected": ["H₂O"]
+    "expected": [
+      "H₂O"
+    ]
   },
   {
     "id": "chem_sulfuric_acid",
     "category": "化学式",
     "text": "稀 H2SO4 与锌反应。",
-    "expected": ["H₂SO₄"]
+    "expected": [
+      "H₂SO₄"
+    ]
   },
   {
     "id": "ion_sodium",
     "category": "离子",
     "text": "食盐溶于水产生 Na+ 和 Cl-。",
-    "expected": ["Na⁺", "Cl⁻"]
+    "expected": [
+      "Na⁺",
+      "Cl⁻"
+    ]
   },
   {
     "id": "ion_sulfate",
     "category": "原子团离子",
     "text": "硫酸根离子写作 SO4^2-。",
-    "expected": ["SO₄²⁻"]
+    "expected": [
+      "SO₄²⁻"
+    ]
   },
   {
     "id": "reaction_equation",
     "category": "反应式",
     "text": "氢气燃烧：2H2 + O2 = 2H2O。",
-    "expected": ["2H₂ + O₂ = 2H₂O"],
-    "forbidden": ["O₂⁺", "H₂⁺"]
+    "expected": [
+      "2H₂ + O₂ = 2H₂O"
+    ],
+    "forbidden": [
+      "O₂⁺",
+      "H₂⁺"
+    ]
   },
   {
     "id": "compare_operators",
     "category": "比较符",
     "text": "若 x <= 3 且 y >= 2，且 x != y。",
-    "expected": ["≤", "≥", "≠"]
+    "expected": [
+      "≤",
+      "≥",
+      "≠"
+    ]
   },
   {
     "id": "physics_subscript",
     "category": "物理量下标",
     "text": "初速度 v_0，动能 E_k。",
-    "expected": ["v₀", "Eₖ"]
+    "expected": [
+      "v₀",
+      "Eₖ"
+    ]
   },
   {
     "id": "mixed_exam_question",
     "category": "混合题面",
     "text": "1. 已知 f(x) = sqrt(2x) + log_2(x)，且 a_1 = 1。\n2. 判断 x in R 时 f(x) >= 0 是否成立。",
-    "expected": ["√(2x)", "log₂(x)", "a₁", "∈", "≥", "1.", "2."]
+    "expected": [
+      "√(2x)",
+      "log₂(x)",
+      "a₁",
+      "∈",
+      "≥",
+      "1.",
+      "2."
+    ]
   },
   {
     "id": "visual_fourier_compact",
     "category": "视觉公式-傅里叶紧凑转译",
     "text": "∫f(x)e^(−iωx)dx",
-    "expected": ["积分", "f(x) × e^(-iωx)dx"],
-    "forbidden": ["∫f(x)e^(−iωx)dx"]
+    "expected": [
+      "积分",
+      "f(x) × e^(-iωx)dx"
+    ],
+    "forbidden": [
+      "∫f(x)e^(−iωx)dx"
+    ]
   },
   {
     "id": "visual_fourier_bounded_compact",
     "category": "视觉公式-带上下限积分",
     "text": "∫_{-∞}^{∞} f(x)e^(−iωx) dx",
-    "expected": ["积分(从-∞到", "∞)", "e^(-iωx)"],
-    "forbidden": ["∈fty"]
+    "expected": [
+      "积分(从-∞到",
+      "∞)",
+      "e^(-iωx)"
+    ],
+    "forbidden": [
+      "∈fty"
+    ]
   },
   {
     "id": "latex_fourier_no_infty_corruption",
     "category": "LaTeX傅里叶转译",
     "text": "\\int_{-\\infty}^{\\infty} f(x)e^{-i\\omega x} dx",
-    "expected": ["积分(从-∞到", "∞)", "e^(-iω x)"],
-    "forbidden": ["∈fty", "\\infty"]
+    "expected": [
+      "积分(从-∞到",
+      "∞)",
+      "e^(-iω x)"
+    ],
+    "forbidden": [
+      "∈fty",
+      "\\infty"
+    ]
   },
   {
     "id": "visual_fourier_spoken_structured",
     "category": "视觉公式-结构朗读",
     "profile": "spoken_structured",
     "text": "∫f(x)e^(−iωx)dx",
-    "expected": ["对 f(x) 乘以 e 的", "欧米伽 x 次方", "关于 x 积分"],
-    "forbidden": ["∫f(x)e^(−iωx)dx"]
+    "expected": [
+      "对 f(x) 乘以 e 的",
+      "欧米伽 x 次方",
+      "关于 x 积分"
+    ],
+    "forbidden": [
+      "∫f(x)e^(−iωx)dx"
+    ]
+  },
+  {
+    "id": "plain_quadratic_spoken_structured",
+    "category": "视觉公式-求根公式结构朗读",
+    "profile": "spoken_structured",
+    "text": "x = (-b ± sqrt(b^2-4ac))/(2a)",
+    "expected": [
+      "2a 分之",
+      "负 b 加减",
+      "根号",
+      "b 的平方 减 4ac"
+    ],
+    "forbidden": [
+      "±",
+      "√",
+      "sqrt",
+      "/(2a)"
+    ]
   }
 ]

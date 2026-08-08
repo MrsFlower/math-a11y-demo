@@ -159,7 +159,7 @@ function updateQuickStart(prefs) {
     transcribeProfile: "spoken_structured",
   };
   const setup = p.setupDone ? "已保存" : "未保存";
-  $("shortcut-summary").textContent = `Shift+Alt+M 当前默认：${shortcutModeLabel(p)}（${setup}）。`;
+  $("shortcut-summary").textContent = `Ctrl+Shift+M 当前默认：${shortcutModeLabel(p)}（${setup}）。`;
   $("primary-action-btn").textContent = primaryActionLabel(p);
   $("primary-action-btn").setAttribute("aria-label", `${primaryActionLabel(p)}。${$("shortcut-summary").textContent}`);
 }
@@ -179,7 +179,7 @@ async function showShortcutSetup(reason) {
   applyShortcutPrefsToControls(prefs);
   hideMainWorkflow();
   $("shortcut-setup").hidden = false;
-  const prefix = reason || "请选择 Shift+Alt+M 的默认行为。";
+  const prefix = reason || "请选择 Ctrl+Shift+M 的默认行为。";
   setStatus(`${prefix}保存后，下次按快捷键会直接执行所选模式。`);
   $("shortcut-setup-heading").focus();
 }
@@ -775,7 +775,7 @@ function renderHistory(items) {
 async function handleShortcutAction(action) {
   if (!action) return;
   if (action.kind === "open_setup") {
-    await showShortcutSetup("首次使用 Shift+Alt+M，请先选择默认行为。");
+    await showShortcutSetup("首次使用 Ctrl+Shift+M，请先选择默认行为。");
     return;
   }
 
@@ -831,10 +831,10 @@ $("shortcut-save-btn").addEventListener("click", async () => {
   updateQuickStart(prefs);
   if (prefs.setupDone) {
     hideShortcutSetup();
-    setStatus("快捷键默认行为已保存。以后按 Shift+Alt+M 会直接执行所选模式。");
+    setStatus("快捷键默认行为已保存。以后按 Ctrl+Shift+M 会直接执行所选模式。");
   } else {
     hideShortcutSetup();
-    setStatus("快捷键设置已临时应用。因为没有勾选保存，下次按 Shift+Alt+M 仍会先显示此设置。");
+    setStatus("快捷键设置已临时应用。因为没有勾选保存，下次按 Ctrl+Shift+M 仍会先显示此设置。");
   }
 });
 $("shortcut-cancel-btn").addEventListener("click", () => {
@@ -842,7 +842,7 @@ $("shortcut-cancel-btn").addEventListener("click", () => {
   setStatus("已暂不设置快捷键默认行为。你仍可使用页面上的按钮。");
 });
 $("shortcut-edit-btn").addEventListener("click", () =>
-  showShortcutSetup("正在修改 Shift+Alt+M 的默认行为。")
+  showShortcutSetup("正在修改 Ctrl+Shift+M 的默认行为。")
 );
 $("paste-btn").addEventListener("click", () => {
   pendingContext = "";
