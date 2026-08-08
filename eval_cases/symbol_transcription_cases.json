@@ -302,6 +302,33 @@
     ]
   },
   {
+    "id": "latex_bmatrix",
+    "category": "LaTeX矩阵",
+    "text": "单位矩阵 I=\\begin{bmatrix} 1 & 0 \\\\ 0 & 1 \\end{bmatrix}。",
+    "expected": [
+      "矩阵：第 1 行 1，0；第 2 行 0，1"
+    ],
+    "forbidden": [
+      "\\begin",
+      "\\end",
+      "bmatrix"
+    ]
+  },
+  {
+    "id": "latex_vmatrix_with_scripts",
+    "category": "LaTeX行列式",
+    "text": "D=\\begin{vmatrix} a_{11} & a_{12} \\\\ a_{21} & a_{22} \\end{vmatrix}。",
+    "expected": [
+      "行列式：第 1 行 a₁₁，a₁₂；第 2 行 a₂₁，a₂₂"
+    ],
+    "forbidden": [
+      "\\begin",
+      "\\end",
+      "vmatrix",
+      "_{"
+    ]
+  },
+  {
     "id": "unit_acceleration",
     "category": "物理单位",
     "text": "重力加速度约为 9.8 m/s^2。",

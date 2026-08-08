@@ -208,6 +208,21 @@ def _normalize_cases_body(body: str) -> tuple[str, list[str]]:
     return "分段：" + "；".join(rows), applied
 
 
+def _normalize_matrix_body(body: str, label: str) -> tuple[str, list[str]]:
+    rows: list[str] = []
+    applied: list[str] = []
+    for idx, row in enumerate(_split_latex_rows(body), 1):
+        cells: list[str] = []
+        for cell in row.split("&"):
+            value, value_rules = _normalize_latex_structures(cell.strip())
+            applied.extend(value_rules)
+            if value:
+                cells.append(value)
+        if cells:
+            rows.append(f"第 {idx} 行 " + "，".join(cells))
+    return label + "：" + "；".join(rows), applied
+
+
 def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
     """配对扫描 LaTeX 核心结构，避免正则只能处理一层花括号。
 
@@ -235,6 +250,21 @@ def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
                 applied.extend(cases_rules)
                 applied.append("LaTeX结构扫描-分段函数")
                 i = end_idx + len("\\end{cases}")
+                continue
+
+        matrix_env = next((env for env in ("bmatrix", "pmatrix", "matrix", "vmatrix", "Vmatrix") if text.startswith(f"\\begin{{{env}}}", i)), None)
+        if matrix_env:
+            begin_tag = f"\\begin{{{matrix_env}}}"
+            end_tag = f"\\end{{{matrix_env}}}"
+            end_idx = text.find(end_tag, i + len(begin_tag))
+            if end_idx != -1:
+                body = text[i + len(begin_tag):end_idx]
+                label = "行列式" if matrix_env in ("vmatrix", "Vmatrix") else "矩阵"
+                matrix_text, matrix_rules = _normalize_matrix_body(body, label)
+                out.append(matrix_text)
+                applied.extend(matrix_rules)
+                applied.append("LaTeX结构扫描-矩阵")
+                i = end_idx + len(end_tag)
                 continue
 
         frac_cmd = next((cmd for cmd in ("\\dfrac", "\\tfrac", "\\frac") if _has_command_boundary(text, i, cmd)), None)
