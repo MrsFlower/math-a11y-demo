@@ -94,11 +94,49 @@ def _read_balanced(text: str, pos: int, left: str, right: str) -> tuple[str, int
     return None
 
 
+def _read_script_arg(text: str, pos: int) -> tuple[str, int] | None:
+    """读取 LaTeX 上下限参数：优先 {...}，否则读一个简单 token。"""
+    pos = _skip_ws(text, pos)
+    if pos >= len(text):
+        return None
+    if text[pos] == "{":
+        return _read_balanced(text, pos, "{", "}")
+    m = re.match(r"\\[a-zA-Z]+|[A-Za-z0-9+\-=∞]+", text[pos:])
+    if not m:
+        return None
+    return m.group(0), pos + m.end()
+
+
+def _read_subsup(text: str, pos: int) -> tuple[str | None, str | None, int]:
+    """读取命令后的 _{...}^{...} / ^{...}_{...}，返回 (下限, 上限, 结束位置)。"""
+    lower: str | None = None
+    upper: str | None = None
+    cur = _skip_ws(text, pos)
+    while cur < len(text) and text[cur] in "_^":
+        marker = text[cur]
+        arg = _read_script_arg(text, cur + 1)
+        if not arg:
+            break
+        if marker == "_":
+            lower = arg[0]
+        else:
+            upper = arg[0]
+        cur = _skip_ws(text, arg[1])
+    return lower, upper, cur
+
+
+def _normalize_script_text(text: str | None) -> tuple[str | None, list[str]]:
+    if text is None:
+        return None, []
+    out, rules = _normalize_latex_structures(text)
+    return out, rules
+
+
 def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
     """配对扫描 LaTeX 核心结构，避免正则只能处理一层花括号。
 
-    只处理确定性结构：frac / dfrac / tfrac / sqrt。输出仍是现有规则管线
-    能理解的中间形态，例如 (分子)/(分母)、√(...)、n次√(...)。
+    只处理确定性结构：frac / sqrt / int / sum / prod。输出仍是现有规则管线
+    能理解的中间形态，例如 (分子)/(分母)、√(...)、积分(从...到...)。
     """
     out: list[str] = []
     applied: list[str] = []
@@ -133,6 +171,26 @@ def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
                 i = radicand[1]
                 continue
 
+        op_cmd = next((cmd for cmd in ("\\sum", "\\prod", "\\int") if _has_command_boundary(text, i, cmd)), None)
+        if op_cmd:
+            lower, upper, end = _read_subsup(text, i + len(op_cmd))
+            lower, lower_rules = _normalize_script_text(lower)
+            upper, upper_rules = _normalize_script_text(upper)
+            applied.extend(lower_rules)
+            applied.extend(upper_rules)
+            if lower is not None and upper is not None:
+                if op_cmd == "\\sum":
+                    out.append(f"求和(从{lower}到{upper}) ")
+                    applied.append("LaTeX结构扫描-求和")
+                elif op_cmd == "\\prod":
+                    out.append(f"连乘(从{lower}到{upper}) ")
+                    applied.append("LaTeX结构扫描-连乘")
+                else:
+                    out.append(f"积分(从{lower}到{upper}) ")
+                    applied.append("LaTeX结构扫描-积分")
+                i = end
+                continue
+
         out.append(text[i])
         i += 1
     return "".join(out), applied
@@ -155,6 +213,8 @@ _LATEX_RULES: list[tuple[str, re.Pattern, str | object]] = [
     ("LaTeX三重积分", re.compile(r"\\iiint(?![a-zA-Z])\s*"), "∭"),
     ("LaTeX曲线积分", re.compile(r"\\oint(?![a-zA-Z])\s*"), "∮"),
     ("LaTeX积分", re.compile(r"\\int(?![a-zA-Z])\s*"), "∫"),
+    ("LaTeX求和", re.compile(r"\\sum(?![a-zA-Z])\s*"), "求和 "),
+    ("LaTeX连乘", re.compile(r"\\prod(?![a-zA-Z])\s*"), "连乘 "),
     # \lim_{x\to 0} / \lim_{n} 统一取花括号整体，repl 内部再拆箭头（避免分组 500）
     ("LaTeX极限", re.compile(r"\\lim_\{([^{}]*)\}\s*"), _latex_lim),
     ("LaTeX极限号", re.compile(r"\\lim(?![a-zA-Z])\s*"), "极限"),

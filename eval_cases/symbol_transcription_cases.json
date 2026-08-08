@@ -183,6 +183,59 @@
     ]
   },
   {
+    "id": "latex_integral_balanced_limits",
+    "category": "LaTeX复杂定积分",
+    "text": "计算 \\int_{\\frac{1}{2}}^{1} f(x) dx。",
+    "expected": [
+      "积分(从(1)/(2)到 1)"
+    ],
+    "forbidden": [
+      "\\int",
+      "\\frac"
+    ]
+  },
+  {
+    "id": "latex_sum_limits",
+    "category": "LaTeX求和",
+    "text": "求 \\sum_{i=1}^{n} i^2。",
+    "expected": [
+      "求和(从 i=1 到 n)",
+      "i²"
+    ],
+    "forbidden": [
+      "\\sum",
+      "∑"
+    ]
+  },
+  {
+    "id": "latex_prod_limits_reversed",
+    "category": "LaTeX连乘",
+    "text": "计算 \\prod^{m}_{k=1} a_k。",
+    "expected": [
+      "连乘(从 k=1 到 m)",
+      "aₖ"
+    ],
+    "forbidden": [
+      "\\prod",
+      "∏"
+    ]
+  },
+  {
+    "id": "latex_bare_sum_prod",
+    "category": "LaTeX裸求和连乘",
+    "text": "符号 \\sum 表示求和，\\prod 表示连乘。",
+    "expected": [
+      "求和 表示求和",
+      "连乘 表示连乘"
+    ],
+    "forbidden": [
+      "\\sum",
+      "\\prod",
+      "∑",
+      "∏"
+    ]
+  },
+  {
     "id": "unit_acceleration",
     "category": "物理单位",
     "text": "重力加速度约为 9.8 m/s^2。",
