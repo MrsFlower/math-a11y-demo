@@ -60,7 +60,10 @@ async def main() -> int:
         by_source = {}
         for i, f in enumerate(formulas, 1):
             by_source.setdefault(f["source"], []).append(i)
-            print(f"  {i:>2}. [{f['kind']}] ({f['source']}) {f['latex'][:70]}")
+            debug = f.get("debug") or {}
+            confidence = f.get("confidence", "?")
+            extractor = debug.get("extractor", "?")
+            print(f"  {i:>2}. [{f['kind']}/{confidence}/{extractor}] ({f['source']}) {f['latex'][:70]}")
         print("\n按来源统计：")
         for src, ids in by_source.items():
             print(f"  {src}: {len(ids)} 条 {ids}")
