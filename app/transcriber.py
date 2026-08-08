@@ -145,6 +145,7 @@ _LATEX_RULES: list[tuple[str, re.Pattern, str | object]] = [
     ("LaTeX行间定界符", re.compile(r"\\\[\s*|\s*\\\]"), " "),
     ("LaTeX美元定界符", re.compile(r"\$\$\s*|\$"), ""),
     ("LaTeX空白", re.compile(r"\\[,;!]\s*|\\\s+"), " "),
+    ("LaTeX自适应括号", re.compile(r"\\left(?![a-zA-Z])\s*|\\right(?![a-zA-Z])\s*"), ""),
     ("LaTeX分式", re.compile(r"\\[dD]?frac\{([^{}]*)\}\{([^{}]*)\}"), _latex_frac),
     ("LaTeX多次根号", re.compile(r"\\sqrt\[([^\]]*)\]\{([^{}]*)\}"), lambda m: f"{m.group(1)}次√({m.group(2)})"),
     ("LaTeX根号", re.compile(r"\\sqrt\{([^{}]*)\}"), lambda m: f"√({m.group(1)})"),

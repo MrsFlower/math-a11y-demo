@@ -113,6 +113,19 @@
     ]
   },
   {
+    "id": "latex_left_right_cleanup",
+    "category": "LaTeX自适应括号",
+    "text": "化简 \\left(\\frac{x+1}{x+2}\\right)^2。",
+    "expected": [
+      "((x+1)/(x+2))²"
+    ],
+    "forbidden": [
+      "\\left",
+      "\\right",
+      "\\frac"
+    ]
+  },
+  {
     "id": "set_membership",
     "category": "集合",
     "text": "若 x in A 且 A in B，判断关系。",
