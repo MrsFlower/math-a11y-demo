@@ -53,6 +53,41 @@
     ]
   },
   {
+    "id": "latex_complex_subscript_fraction",
+    "category": "LaTeX复杂下标",
+    "text": "记 x_{\\frac{1}{2}} 为中点处的值。",
+    "expected": [
+      "x 下标 (1)/(2)"
+    ],
+    "forbidden": [
+      "\\frac",
+      "_{"
+    ]
+  },
+  {
+    "id": "latex_complex_exponent_fraction",
+    "category": "LaTeX复杂上标",
+    "text": "函数 x^{\\frac{1}{2}} 等于根号 x。",
+    "expected": [
+      "x 的 (1)/(2) 次方"
+    ],
+    "forbidden": [
+      "\\frac",
+      "^{"
+    ]
+  },
+  {
+    "id": "underscore_identifier_no_false_positive",
+    "category": "下划线防误转",
+    "text": "变量名 user_name 不应被当成数学下标。",
+    "expected": [
+      "user_name"
+    ],
+    "forbidden": [
+      "user 下标 name"
+    ]
+  },
+  {
     "id": "log_base",
     "category": "对数",
     "text": "求 log_2(x) 与 log_a(x) 的定义域。",

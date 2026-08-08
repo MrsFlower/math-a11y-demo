@@ -132,6 +132,55 @@ def _normalize_script_text(text: str | None) -> tuple[str | None, list[str]]:
     return out, rules
 
 
+def _read_braced_subsup(text: str, pos: int) -> tuple[str | None, str | None, int]:
+    """只读取花括号上下标，避免把 user_name 这类普通文本误当数学下标。"""
+    lower: str | None = None
+    upper: str | None = None
+    cur = _skip_ws(text, pos)
+    while cur < len(text) and text[cur] in "_^":
+        marker = text[cur]
+        start = _skip_ws(text, cur + 1)
+        if start >= len(text) or text[start] != "{":
+            break
+        arg = _read_balanced(text, start, "{", "}")
+        if not arg:
+            break
+        if marker == "_":
+            lower = arg[0]
+        else:
+            upper = arg[0]
+        cur = _skip_ws(text, arg[1])
+    return lower, upper, cur
+
+
+def _normalize_attached_braced_scripts(text: str) -> tuple[str, list[str]]:
+    """处理 x_{...} / x^{...} 这类附着在单个记号后的花括号上下标。"""
+    out: list[str] = []
+    applied: list[str] = []
+    i = 0
+    while i < len(text):
+        out.append(text[i])
+        if re.match(r"[A-Za-z0-9)\]]", text[i]):
+            lower, upper, end = _read_braced_subsup(text, i + 1)
+            if lower is not None or upper is not None:
+                if lower is not None:
+                    lower_norm, lower_rules = _normalize_latex_structures(lower)
+                    applied.extend(lower_rules)
+                    sub = _sub_inner(lower_norm)
+                    out.append(f" 下标 {lower_norm}" if sub.startswith("_{") else sub)
+                    applied.append("LaTeX结构扫描-下标")
+                if upper is not None:
+                    upper_norm, upper_rules = _normalize_latex_structures(upper)
+                    applied.extend(upper_rules)
+                    sup = _sup_inner(upper_norm)
+                    out.append(f" 的 {upper_norm} 次方" if sup.startswith("^(") and "/" in upper_norm else sup)
+                    applied.append("LaTeX结构扫描-上标")
+                i = end
+                continue
+        i += 1
+    return "".join(out), applied
+
+
 def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
     """配对扫描 LaTeX 核心结构，避免正则只能处理一层花括号。
 
@@ -362,6 +411,8 @@ def transcribe_by_rules(text: str) -> tuple[str, list[str], list[str]]:
     applied: list[str] = []
     out, structure_rules = _normalize_latex_structures(text)
     applied.extend(structure_rules)
+    out, attached_script_rules = _normalize_attached_braced_scripts(out)
+    applied.extend(attached_script_rules)
 
     for name, pattern, repl in _LATEX_RULES:
         new_out, n = pattern.subn(repl, out)
