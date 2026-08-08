@@ -66,6 +66,78 @@ def _sup_inner(inner: str) -> str:
     return "^(" + inner + ")"
 
 
+def _has_command_boundary(text: str, start: int, command: str) -> bool:
+    end = start + len(command)
+    return text.startswith(command, start) and (end >= len(text) or not text[end].isalpha())
+
+
+def _skip_ws(text: str, pos: int) -> int:
+    while pos < len(text) and text[pos].isspace():
+        pos += 1
+    return pos
+
+
+def _read_balanced(text: str, pos: int, left: str, right: str) -> tuple[str, int] | None:
+    """从 pos 读取一个配对分组，返回 (内部文本, 结束后一位)。"""
+    pos = _skip_ws(text, pos)
+    if pos >= len(text) or text[pos] != left:
+        return None
+    depth = 0
+    for i in range(pos, len(text)):
+        ch = text[i]
+        if ch == left:
+            depth += 1
+        elif ch == right:
+            depth -= 1
+            if depth == 0:
+                return text[pos + 1:i], i + 1
+    return None
+
+
+def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
+    """配对扫描 LaTeX 核心结构，避免正则只能处理一层花括号。
+
+    只处理确定性结构：frac / dfrac / tfrac / sqrt。输出仍是现有规则管线
+    能理解的中间形态，例如 (分子)/(分母)、√(...)、n次√(...)。
+    """
+    out: list[str] = []
+    applied: list[str] = []
+    i = 0
+    while i < len(text):
+        frac_cmd = next((cmd for cmd in ("\\dfrac", "\\tfrac", "\\frac") if _has_command_boundary(text, i, cmd)), None)
+        if frac_cmd:
+            first = _read_balanced(text, i + len(frac_cmd), "{", "}")
+            if first:
+                second = _read_balanced(text, first[1], "{", "}")
+                if second:
+                    num, num_rules = _normalize_latex_structures(first[0])
+                    den, den_rules = _normalize_latex_structures(second[0])
+                    out.append(f"({num})/({den})")
+                    applied.extend(num_rules)
+                    applied.extend(den_rules)
+                    applied.append("LaTeX结构扫描-分式")
+                    i = second[1]
+                    continue
+
+        if _has_command_boundary(text, i, "\\sqrt"):
+            pos = i + len("\\sqrt")
+            degree = _read_balanced(text, pos, "[", "]")
+            if degree:
+                pos = degree[1]
+            radicand = _read_balanced(text, pos, "{", "}")
+            if radicand:
+                body, body_rules = _normalize_latex_structures(radicand[0])
+                out.append(f"{degree[0]}次√({body})" if degree else f"√({body})")
+                applied.extend(body_rules)
+                applied.append("LaTeX结构扫描-根号")
+                i = radicand[1]
+                continue
+
+        out.append(text[i])
+        i += 1
+    return "".join(out), applied
+
+
 # (模式名, 正则, 替换) —— 顺序有意义：先结构化命令，后记号级替换。
 # 字母命令一律带 (?![a-zA-Z]) 词边界：否则短命令会吃长命令的前缀
 # （\in 误伤 \int/\iint/\infty；\to 误伤 \top；\lim 误伤 \limsup）。
@@ -227,7 +299,8 @@ def transcribe_by_rules(text: str) -> tuple[str, list[str], list[str]]:
     遗留记号非空说明规则覆盖不了，调用方应走 LLM 或提示用户。
     """
     applied: list[str] = []
-    out = text
+    out, structure_rules = _normalize_latex_structures(text)
+    applied.extend(structure_rules)
 
     for name, pattern, repl in _LATEX_RULES:
         new_out, n = pattern.subn(repl, out)

@@ -90,6 +90,29 @@
     ]
   },
   {
+    "id": "latex_nested_fraction",
+    "category": "LaTeX嵌套分数",
+    "text": "化简 \\frac{1}{\\frac{x+1}{x+2}}。",
+    "expected": [
+      "(1)/((x+1)/(x+2))"
+    ],
+    "forbidden": [
+      "\\frac"
+    ]
+  },
+  {
+    "id": "latex_sqrt_fraction",
+    "category": "LaTeX根号分数",
+    "text": "计算 \\sqrt{\\frac{x+1}{x+2}}。",
+    "expected": [
+      "√((x+1)/(x+2))"
+    ],
+    "forbidden": [
+      "\\sqrt",
+      "\\frac"
+    ]
+  },
+  {
     "id": "set_membership",
     "category": "集合",
     "text": "若 x in A 且 A in B，判断关系。",
