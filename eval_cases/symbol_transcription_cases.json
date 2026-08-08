@@ -329,6 +329,20 @@
     ]
   },
   {
+    "id": "latex_array",
+    "category": "LaTeX数组",
+    "text": "A=\\begin{array}{cc} x & y \\\\ 1 & 2 \\end{array}。",
+    "expected": [
+      "数组：第 1 行 x，y；第 2 行 1，2"
+    ],
+    "forbidden": [
+      "\\begin",
+      "\\end",
+      "array",
+      "{cc}"
+    ]
+  },
+  {
     "id": "unit_acceleration",
     "category": "物理单位",
     "text": "重力加速度约为 9.8 m/s^2。",

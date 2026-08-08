@@ -267,6 +267,21 @@ def _normalize_latex_structures(text: str) -> tuple[str, list[str]]:
                 i = end_idx + len(end_tag)
                 continue
 
+        if text.startswith("\\begin{array}", i):
+            begin_pos = i + len("\\begin{array}")
+            spec = _read_balanced(text, begin_pos, "{", "}")
+            if spec:
+                end_tag = "\\end{array}"
+                end_idx = text.find(end_tag, spec[1])
+                if end_idx != -1:
+                    body = text[spec[1]:end_idx]
+                    array_text, array_rules = _normalize_matrix_body(body, "数组")
+                    out.append(array_text)
+                    applied.extend(array_rules)
+                    applied.append("LaTeX结构扫描-数组")
+                    i = end_idx + len(end_tag)
+                    continue
+
         frac_cmd = next((cmd for cmd in ("\\dfrac", "\\tfrac", "\\frac") if _has_command_boundary(text, i, cmd)), None)
         if frac_cmd:
             first = _read_balanced(text, i + len(frac_cmd), "{", "}")
