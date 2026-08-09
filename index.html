@@ -15,6 +15,8 @@
     .intro { color: var(--sub); }
     ul.features { list-style: none; padding: 0; font-size: 1.02rem; color: #e8efff; }
     ul.features li::before { content: "✓ "; color: var(--accent); font-weight: bold; }
+    .walk-title { font-size: 1.05rem; margin: 1.6rem 0 0.4rem; }
+    .walk ol { color: var(--sub); padding-left: 1.4rem; margin: 0 0 1rem; }
     .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 1.2rem 0; }
     .cta { display: inline-block; font-size: 1.15rem; padding: 0.7rem 1.6rem; border-radius: 8px;
       background: var(--accent); color: #08301a; font-weight: bold; text-decoration: none; margin: 1.2rem 0; }
@@ -41,6 +43,16 @@
       <li>浏览器插件：任意网页选中公式即转译，全程键盘操作、读屏友好</li>
       <li>云端部署开箱即用，无需任何配置</li>
     </ul>
+
+    <section class="walk" aria-labelledby="walk-heading">
+      <h2 id="walk-heading" class="walk-title">30 秒体验路线</h2>
+      <ol>
+        <li>进入网页版，点「求根公式」示例；</li>
+        <li>点「转译成读屏友好文本」，再点「听这段读法」——这就是视障学生实际听到的读法；</li>
+        <li>点「理解并讲解这个公式」，等待约半分钟；</li>
+        <li>点「听 AI 讲解」，听完结构读法与一句话理解。</li>
+      </ol>
+    </section>
 
     <div class="actions">
       <a id="demo-link" class="cta" href="./demo.html">立即体验网页版（30 秒上手）</a>
