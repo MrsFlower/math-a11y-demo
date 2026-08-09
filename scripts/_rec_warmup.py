@@ -7,8 +7,8 @@ import urllib.request
 
 import websockets
 
-BASE = "https://highcodpmiufnwj-cvgvqsopuz.cn-beijing.fcapp.run"
-TOK = "6973c90b-ce3b-45c1-8c0b-7897f1797106"
+BASE = "https://highcodzteceggb-azvgiimdkb.cn-beijing.fcapp.run"
+TOK = "258697c6-125d-40d0-943d-38c7bb817b5a"
 HDRS = {"Authorization": f"Bearer {TOK}", "Content-Type": "application/json"}
 
 

@@ -1,13 +1,16 @@
-// 侧边面板逻辑：捕获 → 确认 → 分析 → 追问 → 历史。
-// 状态机：空闲 idle / 捕获中 capturing / 识别待确认 confirm / 分析中 analyzing / 已完成 done / 失败可重试 error
+// 侧边面板任务流：首页（送入内容）→ 转译结果 → 进一步讲解 → 追问 → 历史。
+// 不向用户暴露「模式」：转译是默认动作，讲解从结果页一键进入；
+// 识别置信度高直接开讲，中低才弹出确认区（确认区在主内容区，不在折叠里）。
 // 所有状态变化都写入 #status（aria-live），读屏自动播报。
 
 // 默认连云端（百炼高代码应用 FC 触发器），用户开箱即用；
 // 也可在底部「服务设置」改回本机 http://127.0.0.1:8321
-const DEFAULT_API = "https://highcodpmiufnwj-cvgvqsopuz.cn-beijing.fcapp.run";
+const DEFAULT_API = "https://highcodzteceggb-azvgiimdkb.cn-beijing.fcapp.run";
 // FC 触发器鉴权 token（无 Authorization 头会被网关拒绝）；对本地服务附带无副作用
-const DEFAULT_TOKEN = "6973c90b-ce3b-45c1-8c0b-7897f1797106";
+const DEFAULT_TOKEN = "258697c6-125d-40d0-943d-38c7bb817b5a";
 const API_KEY = "math_a11y_api_base_v1";
+const PROFILE_KEY = "math_a11y_transcribe_profile_v1";
+const EXPLAIN_VOICE_KEY = "math_a11y_explain_voice_v1";
 const HISTORY_KEY = "math_a11y_history_v1";
 const SHORTCUT_PREF_KEY = "math_a11y_shortcut_prefs_v1";
 const $ = (id) => document.getElementById(id);
@@ -75,18 +78,20 @@ function backendDownMsg(e) {
   return `无法连接理解服务（${apiBase()}）${reason}。请检查网络连接；或在底部「服务设置」里换一个可用的服务地址（本机服务为 http://127.0.0.1:8321）。`;
 }
 
-// ---------------- 工作模式（第五阶段：转译为主，理解为辅） ----------------
-// 转译模式：把读屏读不了的理科符号转成可读纯文本，不解释、不客套。
-// 理解模式：原有确认 -> 分析 -> 追问流程，完全保留。
-
-function currentMode() {
-  const el = document.querySelector('input[name="work-mode"]:checked');
-  return el ? el.value : "transcribe";
-}
+// ---------------- 转译风格（状态内部化：不再用可见的单选框） ----------------
+// 风格切换入口在转译结果页的「换朗读风格」按钮：用户听完结果再决定换，
+// 切换后立即重转并播报后果，不预先设置。
 
 function currentTranscribeProfile() {
-  const el = document.querySelector('input[name="transcribe-profile"]:checked');
-  return el ? el.value : "spoken_structured";
+  try {
+    const v = localStorage.getItem(PROFILE_KEY);
+    if (v === "unicode_compact" || v === "spoken_structured") return v;
+  } catch (e) { /* 忽略 */ }
+  return "spoken_structured";
+}
+
+function profileName(p) {
+  return p === "unicode_compact" ? "紧凑文本" : "结构朗读";
 }
 
 function radioValue(name, fallback) {
@@ -98,16 +103,6 @@ function setRadioValue(name, value) {
   const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
   if (el) el.checked = true;
 }
-
-function applyMode() {
-  const transcribe = currentMode() === "transcribe";
-  $("paste-btn").textContent = transcribe ? "开始转译" : "送入确认";
-  $("transcribe-profile-box").hidden = !transcribe;
-}
-
-document.querySelectorAll('input[name="work-mode"]').forEach((r) =>
-  r.addEventListener("change", applyMode)
-);
 
 async function loadShortcutPrefs() {
   const obj = await chrome.storage.local.get(SHORTCUT_PREF_KEY);
@@ -128,19 +123,12 @@ function applyShortcutPrefsToControls(prefs) {
   $("shortcut-remember").checked = prefs.setupDone !== false;
 }
 
-function applyShortcutPrefsToWorkMode(prefs) {
-  if (prefs.shortcutMode === "explain_scan") {
-    setRadioValue("work-mode", "explain");
-  } else {
-    setRadioValue("work-mode", "transcribe");
-    setRadioValue("transcribe-profile", prefs.transcribeProfile || "spoken_structured");
-  }
-  applyMode();
+function applyShortcutPrefsToState(prefs) {
   updateQuickStart(prefs);
 }
 
 function shortcutModeLabel(prefs) {
-  if (prefs.shortcutMode === "explain_scan") return "扫描当前页面公式并进入理解模式";
+  if (prefs.shortcutMode === "explain_scan") return "扫描当前页面公式并逐条讲解";
   if (prefs.shortcutMode === "text_input") return "打开文本输入框等待粘贴";
   const profile = prefs.transcribeProfile === "unicode_compact" ? "紧凑文本" : "结构朗读";
   return `转译当前选中公式并输出${profile}`;
@@ -190,10 +178,7 @@ function hideShortcutSetup() {
 }
 
 function focusTextInput(message, kind) {
-  setRadioValue("work-mode", "transcribe");
-  applyMode();
-  $("alternate-actions").open = true;
-  $("paste-fold").open = true;
+  // 粘贴区已平铺在「开始」区，无需展开折叠
   $("confirm-box").hidden = true;
   $("candidates").hidden = true;
   $("transcribe-section").hidden = true;
@@ -203,7 +188,6 @@ function focusTextInput(message, kind) {
 
 async function runPrimaryAction() {
   const prefs = await loadShortcutPrefs();
-  applyShortcutPrefsToWorkMode(prefs);
   hideShortcutSetup();
   if (prefs.shortcutMode === "explain_scan") {
     setStatus("正在按默认方式扫描当前页面公式。");
@@ -211,14 +195,16 @@ async function runPrimaryAction() {
     return;
   }
   if (prefs.shortcutMode === "text_input") {
-    focusTextInput("请粘贴题目、公式或化学式，然后按 Tab 到「开始转译」。");
+    focusTextInput("请粘贴题目、公式或化学式，然后按 Tab 到「转译粘贴的公式」。");
     return;
   }
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    // 与快捷键同款的选区清洗（selection_reader.js）：裸 toString 会把
+    // KaTeX 隐藏读屏层泄进来，导致转译结果一半乱码一半正确
     const [ret] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => window.getSelection().toString(),
+      files: ["selection_reader.js"],
     });
     const text = (ret && ret.result || "").trim();
     if (text) {
@@ -240,7 +226,7 @@ function enterConfirm(latex, sourceNote, confidenceNote) {
   $("capture-source").textContent = `来源：${sourceNote}。${confidenceNote || ""}`;
   $("speech-preview").textContent = "";
   // 盲人主路径：焦点落在主操作按钮（听预览→回车），编辑是少数场景的可选路径
-  setStatus(`${sourceNote}捕获成功，正在生成朗读预览。焦点已在「确认并分析」按钮，按回车开始分析；需修改请按 Shift+Tab 进入编辑框。`);
+  setStatus(`识别结果需要确认（${sourceNote}），正在生成朗读预览。焦点已在「确认并讲解」按钮，按回车开始讲解；需修改请按 Shift+Tab 进入编辑框。`);
   $("confirm-btn").focus();
   previewSpeech(latex);
 }
@@ -259,52 +245,52 @@ async function previewSpeech(latex) {
 
 // ---------------- 捕获入口 ----------------
 
-// 统一处理送入的文本（选中 / 粘贴 / 右键捕获）：按当前模式分流。
-// 转译模式不要求用户拥有 LaTeX，直接转译原文；理解模式沿用原流程。
+// 默认路径：选中文本 / 右键捕获 → 直接转译（不解释）。
 async function handleIncomingText(text, sourceNote) {
-  $("extract-suggest").hidden = true;
   const t = (text || "").trim();
   if (!t) {
     setStatus("没有捕获到内容。请先在页面上选中内容，或改用手动粘贴。", "error");
     return;
   }
-  if (currentMode() === "transcribe") {
-    startTranscription(t, sourceNote);
+  startTranscription(t, sourceNote);
+}
+
+// 讲解路径：把文本转成 LaTeX 后开讲。高置信度直接分析（用户无感），
+// 中低置信度才弹确认区——把「确认」从必经步骤降级为异常处理。
+async function explainIncomingText(text, sourceNote) {
+  const t = (text || "").trim();
+  if (!t) {
+    setStatus("没有捕获到内容。请先在页面上选中内容，或改用手动粘贴。", "error");
     return;
   }
   if (looksLikeLatex(t)) {
-    enterConfirm(t, sourceNote, "内容像 LaTeX 源码，已直接送入确认。");
+    await analyzeLatex(t, sourceNote, "内容本身就是 LaTeX，识别零误差。");
     return;
   }
-  setStatus("捕获到普通文本，正在转换为 LaTeX…");
+  setStatus("捕获到普通文本，正在转换为公式…");
   try {
     const data = await apiPost("/api/normalize-input", { text: t });
     if (data.ok && data.latex) {
-      const conf = data.confidence === "high" ? "转换置信度：高。"
-        : data.confidence === "medium" ? "转换置信度：中，请检查。"
-        : "转换置信度：低，请仔细检查每个符号。";
-      enterConfirm(data.latex, `${sourceNote}（已自动转换）`, conf + (data.notes ? ` ${data.notes}` : ""));
+      if (data.confidence === "high") {
+        await analyzeLatex(data.latex, sourceNote, "已自动识别为公式。");
+      } else {
+        const conf = data.confidence === "medium" ? "转换置信度：中，请检查。"
+          : "转换置信度：低，请仔细检查每个符号。";
+        enterConfirm(data.latex, `${sourceNote}（已自动转换）`, conf + (data.notes ? ` ${data.notes}` : ""));
+      }
     } else {
-      setStatus(`转换失败：${data.error || "未识别出公式"}。可在下方手动粘贴 LaTeX。`, "error");
+      setStatus(`转换失败：${data.error || "未识别出公式"}。可在「开始」区直接粘贴 LaTeX。`, "error");
     }
   } catch (e) {
     setStatus(backendDownMsg(e), "error");
   }
 }
 
-// 提取本页公式（注入 content.js）
+// 提取本页公式并逐条讲解（注入 content.js）
 async function extractPage() {
-  if (currentMode() === "transcribe") {
-    // 不报错劝退，直接给一步到位的按钮（焦点落在按钮上，读屏用户听完说明按回车即可）
-    $("alternate-actions").open = true;
-    $("extract-suggest").hidden = false;
-    setStatus("提取公式属于理解模式（找出页面上的 LaTeX 并讲解）。焦点已在「切到理解模式并提取」按钮，按回车一步完成；若只想转译选中内容，请用「使用选中内容」。");
-    $("extract-switch-btn").focus();
-    return;
-  }
-  $("extract-suggest").hidden = true;
   setStatus("正在提取本页公式…");
   $("candidates").hidden = true;
+  $("confirm-box").hidden = true;
   let results;
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -320,8 +306,8 @@ async function extractPage() {
   const found = (results && results.result) || [];
   if (found.length === 0) {
     $("alternate-actions").open = true;
-    setStatus("当前页面没有检测到可识别的公式。请切换到包含公式的页面后再扫描；也可以先选中公式或题目区域，再点「使用选中内容」，或打开手动粘贴。焦点已在「使用选中内容」按钮。", "error");
-    $("selection-btn").focus();
+    setStatus("当前页面没有检测到可识别的公式。请切换到包含公式的页面后再扫描；也可以先选中公式再点「转译选中公式」，或在「开始」区直接粘贴。焦点已在主按钮。", "error");
+    $("primary-action-btn").focus();
     return;
   }
   if (found.length === 1) {
@@ -380,32 +366,18 @@ async function extractPage() {
 function routeCandidate(f) {
   pendingContext = f.context || ""; // 带上公式周围正文，帮后端判断符号含义
   if (f.kind === "latex") {
-    enterConfirm(f.latex, f.source, "页面自带源码，识别零误差。");
+    // 页面自带 LaTeX 源码，识别零误差：不再弹确认，直接开讲
+    analyzeLatex(f.latex, f.source, "页面自带源码，识别零误差。");
   } else {
-    handleIncomingText(f.latex, f.source);
-  }
-}
-
-// 读取当前页选中内容
-async function useSelection() {
-  pendingContext = "";
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const [ret] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => window.getSelection().toString(),
-    });
-    handleIncomingText(ret && ret.result, "当前页面选中内容");
-  } catch (e) {
-    setStatus("无法读取选中内容（受限页面）。请改用手动粘贴。", "error");
+    explainIncomingText(f.latex, f.source);
   }
 }
 
 // ---------------- 分析 ----------------
 
 function setAnalyzing(on) {
-  ["extract-btn", "selection-btn", "paste-btn", "confirm-btn", "reextract-btn",
-   "transcribe-copy-btn", "transcribe-save-btn", "transcribe-to-explain-btn",
+  ["extract-btn", "paste-btn", "paste-explain-btn", "confirm-btn", "reextract-btn",
+   "transcribe-copy-btn", "transcribe-to-explain-btn", "profile-toggle-btn",
    "transcribe-ai-retry-btn", "transcribe-edit-source-btn"].forEach(
     (id) => ($(id).disabled = on)
   );
@@ -490,18 +462,22 @@ async function startTranscription(text, sourceNote, options) {
     renderTranscribeWarnings(data.warnings);
     renderTranscribeFallback(data);
     $("transcribe-section").hidden = false;
+    // 转译结果自动入历史（与讲解一致，不需用户额外点保存）
+    await addTranscriptionHistory(t, data.transcribed_text);
     const conf = data.confidence === "high" ? "置信度：高。"
       : data.confidence === "medium" ? "置信度：中，请核对后再使用。"
       : "置信度：低，请重点核对。";
     const tip = data.warnings && data.warnings.length ? `有 ${data.warnings.length} 条提醒，请核对。` : "";
+    // 结果文本直接进 aria-live 播报：读屏用户不用自己去找结果区
+    const resultSpeech = `转译结果：${data.transcribed_text}。`;
     if (!$("transcribe-fallback").hidden) {
       const aiRetryDisabled = $("transcribe-ai-retry-btn").disabled;
       const focusTarget = aiRetryDisabled ? "transcribe-edit-source-btn" : "transcribe-ai-retry-btn";
       const focusText = aiRetryDisabled ? "手动修改或粘贴" : "用 AI 重新转译";
-      setStatus(`转译完成。${conf}${tip}${aiRetryDisabled ? "AI 重新转译当前不可用，" : ""}可手动修改原文。焦点在「${focusText}」按钮。`);
+      setStatus(`转译完成。${conf}${tip}${resultSpeech}${aiRetryDisabled ? "AI 重新转译当前不可用，" : ""}可手动修改原文。焦点在「${focusText}」按钮。`);
       $(focusTarget).focus();
     } else {
-      setStatus(`转译完成。${conf}${tip}焦点在「复制转译结果」按钮，按回车复制；也可进一步讲解这个公式。`);
+      setStatus(`转译完成。${conf}${tip}${resultSpeech}焦点在「复制转译结果」按钮，按回车复制；也可进一步讲解这个公式。`);
       $("transcribe-copy-btn").focus();
     }
   } catch (e) {
@@ -509,19 +485,22 @@ async function startTranscription(text, sourceNote, options) {
   }
 }
 
-function saveTranscription() {
-  if (!lastTranscription) return;
-  addTranscriptionHistory(lastTranscription.original, lastTranscription.result);
-  setStatus("已保存到历史记录。");
-}
-
 function transcribeToExplain() {
   if (!lastTranscription) return;
-  const radio = document.querySelector('input[name="work-mode"][value="explain"]');
-  radio.checked = true;
-  radio.dispatchEvent(new Event("change"));
-  $("transcribe-section").hidden = true;
-  handleIncomingText(lastTranscription.original, "转译结果转理解");
+  // 转译结果保留在屏上，讲解作为增量结果叠加；避免几十秒等待期白屏
+  setStatus("正在提交讲解请求。讲解要调用大模型，通常需要 10 到 40 秒；转译结果保留在下方，可随时查看。想放弃可按 Esc 或「取消本次分析」。");
+  explainIncomingText(lastTranscription.original, "转译结果进一步讲解");
+}
+
+// 换朗读风格：听完结果再决定换才符合直觉；切换后立即重转并播报后果
+async function toggleTranscribeProfile() {
+  if (!lastTranscription) return;
+  const next = currentTranscribeProfile() === "spoken_structured" ? "unicode_compact" : "spoken_structured";
+  try { localStorage.setItem(PROFILE_KEY, next); } catch (e) { /* 忽略 */ }
+  setStatus(`已切换为${profileName(next)}风格，正在重新转译…`);
+  await startTranscription(lastTranscription.original, lastTranscription.sourceNote || "当前公式");
+  setStatus(`已按${profileName(next)}重新转译。如不习惯，可再按「换朗读风格」切回。`);
+  $("transcribe-copy-btn").focus();
 }
 
 function retryTranscriptionWithAi() {
@@ -536,14 +515,16 @@ function editTranscriptionSource() {
   $("paste-input").focus();
 }
 
-async function analyze() {
-  const latex = $("confirm-input").value.trim();
+// analyzeLatex：拿到可信 LaTeX 后直接开讲（高置信度路径不经过确认框）
+async function analyzeLatex(latex, sourceNote, note) {
   if (!latex) {
     setStatus("公式为空，请先捕获或粘贴。", "error");
     return;
   }
+  $("candidates").hidden = true;
+  $("confirm-box").hidden = true;
   setAnalyzing(true);
-  setStatus("正在分析，通常需要 20 秒左右。可按「取消本次分析」停止等待。");
+  setStatus(`已识别公式（${sourceNote}），正在讲解，通常需要 20 秒左右。可按「取消本次分析」停止等待。`);
   abortCtrl = new AbortController();
   try {
     const data = await apiPost(
@@ -552,7 +533,7 @@ async function analyze() {
       abortCtrl.signal
     );
     if (!data.ok) {
-      setStatus(`分析失败：${data.error || "未知错误"}。请检查公式后重试。`, "error");
+      setStatus(`讲解失败：${data.error || "未知错误"}。请检查公式后重试。`, "error");
       return;
     }
     currentLatex = latex;
@@ -565,11 +546,17 @@ async function analyze() {
     const firstSent = ((exp.accessible_summary || "").split(/[。！？]/)[0] || "").trim();
     const warnCount = (exp.consistency_warnings || []).length;
     const warnNote = warnCount ? `注意，有 ${warnCount} 条可靠性提醒，已列在讲解开头。` : "";
-    setStatus(`分析完成：${name}。${firstSent ? firstSent + "。" : ""}${warnNote}短讲解已显示，可继续追问。`);
     $("result-heading").focus();
+    if (explainVoiceMode() === "tts") {
+      // AI 语音模式：状态只留一句短提示，语音合成完自动播，避免和读屏双声道重叠
+      setStatus(`讲解完成：${name}。${warnNote}AI 语音即将朗读结构读法与摘要。`);
+      playAiExplanation();
+    } else {
+      setStatus(`讲解完成：${name}。${firstSent ? firstSent + "。" : ""}${warnNote}短讲解已显示，可继续追问。`);
+    }
   } catch (e) {
     if (e.name === "AbortError") {
-      setStatus("本次分析已取消。");
+      setStatus("本次讲解已取消。");
     } else {
       setStatus(backendDownMsg(e), "error");
     }
@@ -577,6 +564,11 @@ async function analyze() {
     setAnalyzing(false);
     abortCtrl = null;
   }
+}
+
+// 确认框的「确认并讲解」：以用户编辑后的内容为准
+async function analyze() {
+  await analyzeLatex($("confirm-input").value.trim(), "用户确认结果", "");
 }
 
 function renderResult(data) {
@@ -747,9 +739,10 @@ async function addHistory(latex, data) {
   renderHistory(items);
 }
 
-// 转译历史：存完整原文与完整结果，展示时截取（原文前 80 字 / 结果前 120 字）
+// 转译历史：存完整原文与完整结果，同一原文只留最新一条，展示时截取（原文前 80 字 / 结果前 120 字）
 async function addTranscriptionHistory(original, result) {
   let items = await loadHistory();
+  items = items.filter((it) => !(it.type === "transcription" && it.original === original));
   items.unshift({
     type: "transcription",
     time: new Date().toLocaleString("zh-CN"),
@@ -814,7 +807,8 @@ function renderHistory(items) {
       loadBtn.setAttribute("aria-label", `重新载入：${it.name}`);
       loadBtn.addEventListener("click", () => {
         pendingContext = "";
-        enterConfirm(it.latex, "历史记录", "之前分析过，按「确认并分析」重新生成讲解。");
+        // 历史里是已分析过的可信 LaTeX：不再弹确认，直接重新讲解
+        analyzeLatex(it.latex, "历史记录", "");
       });
       copyBtn.textContent = "复制总结";
       copyBtn.setAttribute("aria-label", `复制总结：${it.name}`);
@@ -836,11 +830,11 @@ async function handleShortcutAction(action) {
   }
 
   const prefs = await loadShortcutPrefs();
-  applyShortcutPrefsToWorkMode(prefs);
+  applyShortcutPrefsToState(prefs);
   hideShortcutSetup();
 
   if (action.kind === "shortcut_explain_scan") {
-    setStatus("已按快捷键进入理解模式，正在扫描当前页面公式。");
+    setStatus("已按快捷键开始扫描并讲解本页公式。");
     extractPage();
     return;
   }
@@ -868,14 +862,7 @@ async function handleShortcutAction(action) {
 // ---------------- 事件绑定与初始化 ----------------
 
 $("extract-btn").addEventListener("click", extractPage);
-$("extract-switch-btn").addEventListener("click", () => {
-  const r = document.querySelector('input[name="work-mode"][value="explain"]');
-  r.checked = true;
-  r.dispatchEvent(new Event("change"));
-  extractPage();
-});
 $("primary-action-btn").addEventListener("click", runPrimaryAction);
-$("selection-btn").addEventListener("click", useSelection);
 $("shortcut-save-btn").addEventListener("click", async () => {
   const prefs = {
     setupDone: $("shortcut-remember").checked,
@@ -883,7 +870,7 @@ $("shortcut-save-btn").addEventListener("click", async () => {
     transcribeProfile: radioValue("shortcut-profile", "spoken_structured"),
   };
   await saveShortcutPrefs(prefs);
-  applyShortcutPrefsToWorkMode(prefs);
+  applyShortcutPrefsToState(prefs);
   updateQuickStart(prefs);
   if (prefs.setupDone) {
     hideShortcutSetup();
@@ -904,10 +891,14 @@ $("paste-btn").addEventListener("click", () => {
   pendingContext = "";
   handleIncomingText($("paste-input").value, "手动粘贴");
 });
+$("paste-explain-btn").addEventListener("click", () => {
+  pendingContext = "";
+  explainIncomingText($("paste-input").value, "手动粘贴");
+});
 $("transcribe-copy-btn").addEventListener("click", () =>
   copyText((lastTranscription && lastTranscription.result) || "", "转译结果")
 );
-$("transcribe-save-btn").addEventListener("click", saveTranscription);
+$("profile-toggle-btn").addEventListener("click", toggleTranscribeProfile);
 $("transcribe-to-explain-btn").addEventListener("click", transcribeToExplain);
 $("transcribe-ai-retry-btn").addEventListener("click", retryTranscriptionWithAi);
 $("transcribe-edit-source-btn").addEventListener("click", editTranscriptionSource);
@@ -915,7 +906,7 @@ $("confirm-btn").addEventListener("click", analyze);
 $("reextract-btn").addEventListener("click", () => {
   $("confirm-box").hidden = true;
   $("confirm-input").value = "";
-  setStatus("已清除。请重新提取、选中或粘贴公式。");
+  setStatus("已清除。可重新选中公式后按主按钮，或点「自动提取页面所有公式」。");
   $("extract-btn").focus();
 });
 $("copy-only-btn").addEventListener("click", () =>
@@ -929,8 +920,9 @@ $("copy-all-btn").addEventListener("click", () =>
 );
 
 // ---------------- AI 语音讲解（百炼 TTS）----------------
-// 铁律：只在用户点击时播放，绝不自动，读屏用户不点它就完全无感。
-// 服务低视力/未装读屏的用户与演示场景。
+// 默认只在用户点击时播放（读屏用户不点它就完全无感）；
+// 若用户在「服务设置」选了「自动播放 AI 语音」，讲解完成后自动播。
+// 铁律：任何时刻只有一路声音——自动播放前会先停掉旧音频。
 let aiAudio = null;
 let aiAudioUrl = null;
 function stopAiSpeak() {
@@ -938,9 +930,9 @@ function stopAiSpeak() {
   if (aiAudioUrl) { URL.revokeObjectURL(aiAudioUrl); aiAudioUrl = null; }
   $("ai-speak-btn").textContent = "听 AI 讲解";
 }
-$("ai-speak-btn").addEventListener("click", async () => {
+async function playAiExplanation() {
   if (!currentData) return;
-  if (aiAudio) { stopAiSpeak(); setStatus("已停止 AI 讲解。"); return; }
+  stopAiSpeak(); // 保证不会叠两路声音
   const exp = currentData.explanation || {};
   const text = [currentData.speech_text, exp.accessible_summary].filter(Boolean).join("。");
   const btn = $("ai-speak-btn");
@@ -968,7 +960,28 @@ $("ai-speak-btn").addEventListener("click", async () => {
   } finally {
     btn.disabled = false;
   }
+}
+$("ai-speak-btn").addEventListener("click", async () => {
+  if (!currentData) return;
+  if (aiAudio) { stopAiSpeak(); setStatus("已停止 AI 讲解。"); return; }
+  await playAiExplanation();
 });
+
+// ---------------- 讲解朗读方式（sr = 屏幕阅读器 / tts = 自动 AI 语音）----------------
+function explainVoiceMode() {
+  try { return localStorage.getItem(EXPLAIN_VOICE_KEY) || "sr"; } catch (e) { return "sr"; }
+}
+document.querySelectorAll('input[name="explain-voice"]').forEach((r) =>
+  r.addEventListener("change", () => {
+    const v = radioValue("explain-voice", "sr");
+    try { localStorage.setItem(EXPLAIN_VOICE_KEY, v); } catch (e) { /* 忽略 */ }
+    if (v === "tts") {
+      setStatus("已切换为自动 AI 语音：讲解完成后自动朗读结构读法与摘要。想中途停下按「停止 AI 讲解」。");
+    } else {
+      setStatus("已切换为屏幕阅读器直接读：插件不再自动播音，讲解文字由 NVDA 等读屏朗读。");
+    }
+  })
+);
 $("ask-btn").addEventListener("click", askQuestion);
 $("ask-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") askQuestion();
@@ -1039,11 +1052,14 @@ chrome.runtime.onMessage.addListener((msg) => {
 });
 
 (async function init() {
-  applyMode();
   const prefs = await loadShortcutPrefs();
   updateQuickStart(prefs);
-  applyShortcutPrefsToWorkMode(prefs);
+  applyShortcutPrefsToState(prefs);
+  // 练习页链接随服务地址变化（云端/本机都能打开）
+  $("practice-link").href = `${apiBase()}/static/plugin_test_page.html`;
   try { $("api-base-input").value = localStorage.getItem(API_KEY) || DEFAULT_API; } catch (e) { /* 忽略 */ }
+  const evMode = explainVoiceMode();
+  document.querySelectorAll('input[name="explain-voice"]').forEach((r) => { r.checked = r.value === evMode; });
   renderHistory(await loadHistory());
   // 面板打开前触发的捕获（右键/快捷键先于面板加载）
   const obj = await chrome.storage.session.get("pendingCapture");

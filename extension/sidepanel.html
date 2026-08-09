@@ -58,7 +58,8 @@
     }
     .status[data-kind="error"] { border-left-color: var(--focus); background: #fdeeee; }
     .hint { font-size: 0.88rem; color: #444; margin: 0.25rem 0; }
-    #mode-box, #transcribe-profile-box, #shortcut-setup, #quick-start {
+        .mode-opt { display: block; margin: 0.25rem 0; }
+    #mode-box, #shortcut-setup, #quick-start {
       border: 1px solid var(--border);
       border-radius: 6px;
       margin: 0 0 0.6rem;
@@ -160,54 +161,42 @@
   <section id="quick-start" aria-labelledby="quick-start-heading">
     <h2 id="quick-start-heading" tabindex="-1">开始</h2>
     <p id="shortcut-summary" class="hint">正在读取快捷键设置…</p>
-    <button id="primary-action-btn">转译选中公式</button>
+    <p>
+      <button id="primary-action-btn">转译选中公式</button>
+      <button id="extract-btn" class="secondary" aria-label="扫描当前页面，找出全部公式并逐条讲解">自动提取页面所有公式</button>
+    </p>
+    <label for="paste-input">手动粘贴需要转译的公式（题目、公式、化学式或 LaTeX 均可）</label>
+    <textarea id="paste-input" placeholder="例如：已知 f(x)=sqrt(3x+1)… 或 \frac{a}{b}"></textarea>
+    <p>
+      <button id="paste-btn" class="secondary">转译粘贴的公式</button>
+      <button id="paste-explain-btn" class="secondary" aria-label="把粘贴的内容送去理解讲解">理解粘贴的公式</button>
+    </p>
+  </section>
+  
+  <details id="alternate-actions">
+    <summary>练习与快捷键设置</summary>
+    <a id="practice-link" href="#" target="_blank">打开练习页（含多种公式样例，适合试用）</a>
+    <button id="shortcut-edit-btn" class="secondary">修改快捷键默认行为</button>
+  </details>
+  
+  <div id="candidates" hidden>
+    <h3 id="candidates-heading" tabindex="-1">找到的公式（选择一条开始讲解）</h3>
+    <p class="hint">按数字键 1~9 可直接选择对应公式。</p>
+    <div id="candidates-list" role="group" aria-labelledby="candidates-heading"></div>
+  </div>
+  
+  <section id="confirm-box" aria-labelledby="confirm-heading" hidden>
+    <h3 id="confirm-heading" tabindex="-1">识别结果需要确认</h3>
+    <p id="capture-source" class="hint"></p>
+    <label for="confirm-input">识别出的 LaTeX（可直接编辑，Ctrl+回车 开始讲解）</label>
+    <textarea id="confirm-input"></textarea>
+    <p id="speech-preview" class="hint" aria-live="polite"></p>
+    <button id="confirm-btn" aria-label="确认识别结果并开始讲解">确认并讲解</button>
+    <button id="reextract-btn" class="secondary" aria-label="放弃本条，重新选择公式">重新选择</button>
+    <button id="copy-only-btn" class="secondary" aria-label="只复制识别出的LaTeX，不讲解">只复制</button>
   </section>
 
-  <details id="alternate-actions">
-    <summary>换一种方式</summary>
-    <fieldset id="mode-box" aria-label="选择工作模式">
-      <legend class="hint">工作模式（转译负责“读得出来”，理解负责“学得明白”）</legend>
-      <label class="mode-opt"><input type="radio" name="work-mode" value="transcribe" checked> 转译原文，不解释</label>
-      <label class="mode-opt"><input type="radio" name="work-mode" value="explain"> 理解公式，可追问</label>
-    </fieldset>
-
-    <fieldset id="transcribe-profile-box" aria-label="选择转译风格">
-      <legend class="hint">转译风格</legend>
-      <label class="mode-opt"><input type="radio" name="transcribe-profile" value="spoken_structured" checked> 结构朗读</label>
-      <label class="mode-opt"><input type="radio" name="transcribe-profile" value="unicode_compact"> 紧凑文本</label>
-    </fieldset>
-
-    <section aria-labelledby="capture-heading">
-    <h2 id="capture-heading" tabindex="-1">第一步：送入内容</h2>
-    <button id="extract-btn" aria-label="扫描当前页面，提取全部公式（仅理解模式适用）">提取本页公式</button>
-    <span id="extract-suggest" hidden><button id="extract-switch-btn" class="secondary" aria-label="切换到理解公式模式并立即提取本页公式">切到理解模式并提取</button></span>
-    <button id="selection-btn" class="secondary" aria-label="使用当前页面选中的内容">使用选中内容</button>
-    <details id="paste-fold">
-      <summary>手动粘贴（兜底）</summary>
-      <label for="paste-input">题目、公式、化学式或 LaTeX</label>
-      <textarea id="paste-input" placeholder="例如：已知 f(x)=sqrt(3x+1)… 或 \frac{a}{b}"></textarea>
-      <button id="paste-btn" class="secondary">开始转译</button>
-    </details>
-
-    <div id="candidates" hidden>
-      <h3 id="candidates-heading" tabindex="-1">找到的公式（选择一条）</h3>
-      <p class="hint">按数字键 1~9 可直接选择对应公式。</p>
-      <div id="candidates-list" role="group" aria-labelledby="candidates-heading"></div>
-    </div>
-
-    <div id="confirm-box" hidden>
-      <h3 id="confirm-heading" tabindex="-1">确认识别结果</h3>
-      <p id="capture-source" class="hint"></p>
-      <label for="confirm-input">识别出的 LaTeX（可直接编辑，Ctrl+回车 开始分析）</label>
-      <textarea id="confirm-input"></textarea>
-      <p id="speech-preview" class="hint" aria-live="polite"></p>
-      <button id="confirm-btn" aria-label="确认识别结果并开始分析">确认并分析</button>
-      <button id="reextract-btn" class="secondary" aria-label="放弃本条，重新提取">重新提取</button>
-      <button id="copy-only-btn" class="secondary" aria-label="只复制识别出的LaTeX，不分析">只复制</button>
-      <button id="cancel-btn" class="danger" hidden aria-label="取消本次分析，停止等待">取消本次分析</button>
-    </div>
-    </section>
-  </details>
+  <button id="cancel-btn" class="danger" hidden aria-label="取消本次分析，停止等待">取消本次分析</button>
 
   <section id="transcribe-section" aria-labelledby="transcribe-heading" hidden>
     <h2 id="transcribe-heading" tabindex="-1">转译结果</h2>
@@ -220,8 +209,8 @@
     </div>
     <p>
       <button id="transcribe-copy-btn" aria-label="复制转译结果">复制转译结果</button>
-      <button id="transcribe-save-btn" class="secondary" aria-label="保存本次转译到历史记录">保存到历史</button>
-      <button id="transcribe-to-explain-btn" class="secondary" aria-label="把原文送入理解模式进一步讲解">进一步讲解这个公式</button>
+      <button id="profile-toggle-btn" class="secondary" aria-label="切换转译风格并重新转译当前公式">换朗读风格</button>
+      <button id="transcribe-to-explain-btn" class="secondary" aria-label="把原文送去进一步讲解">进一步讲解这个公式</button>
     </p>
   </section>
 
@@ -276,7 +265,11 @@
 
   <details id="settings-fold">
     <summary>服务设置</summary>
-    <button id="shortcut-edit-btn" class="secondary">修改快捷键默认行为</button>
+    <fieldset aria-label="讲解朗读方式">
+      <legend class="hint">讲解朗读方式（二选一，避免两路声音同时出现）</legend>
+      <label class="mode-opt"><input type="radio" name="explain-voice" value="sr" checked> 屏幕阅读器直接读（默认）</label>
+      <label class="mode-opt"><input type="radio" name="explain-voice" value="tts"> 自动播放 AI 语音（百炼 TTS）</label>
+    </fieldset>
     <label for="api-base-input">理解服务地址（默认已连云端；改用本机服务才需要改这里，改完点保存）</label>
     <input type="text" id="api-base-input">
     <button id="api-base-save-btn" class="secondary">保存并测试连接</button>

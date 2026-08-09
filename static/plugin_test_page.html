@@ -8,6 +8,9 @@
     section { border: 1px solid #ccc; border-radius: 6px; padding: 0.5rem 1rem; margin: 1rem 0; }
     h2 { font-size: 1.05rem; }
     .note { color: #555; font-size: 0.9rem; }
+    /* 与真实 KaTeX 一致：MathML 源码层视觉隐藏但读屏可达，
+       页面上只显示一个公式（视觉层），避免“一个公式看成两个” */
+    .katex-mathml { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   </style>
 </head>
 <body>

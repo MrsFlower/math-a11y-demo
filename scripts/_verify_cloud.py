@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""云端复验：aa67882a 包上传后，验证三项后端修复在云端生效。"""
+"""云端复验：9cc0aeae 包上传后，验证兜底闭环 + 新规则在云端生效。"""
 import json
 import sys
 import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
-BASE = "https://highcodpmiufnwj-cvgvqsopuz.cn-beijing.fcapp.run"
-TOKEN = "6973c90b-ce3b-45c1-8c0b-7897f1797106"
+BASE = "https://highcodzteceggb-azvgiimdkb.cn-beijing.fcapp.run"
+TOKEN = "258697c6-125d-40d0-943d-38c7bb817b5a"
 
 # (说明, 输入, profile)
 SAMPLES = [
@@ -17,6 +17,8 @@ SAMPLES = [
      r"$\lim_{x \to 0} \frac{x - \sin x}{x^2 \ln(1+x)}$", "spoken_structured"),
     ("求根公式回归（结构朗读）",
      r"x = (-b ± sqrt(b^2-4ac))/(2a)", "spoken_structured"),
+    ("矩阵新规则（9cc0aeae 才有）",
+     r"\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}", "unicode_compact"),
 ]
 
 ok_all = True
@@ -36,11 +38,18 @@ for desc, text, profile in SAMPLES:
     out = d.get("transcribed_text", "")
     residue = d.get("residue")
     has_backslash = "\\" in out
+    # 9cc0aeae 起响应必须携带 residue 字段（前端兜底区依赖）
+    has_residue_field = "residue" in d
     print(f"[{desc}]")
     print(f"  out: {out}")
-    print(f"  residue: {residue}  反斜杠残留: {has_backslash}")
-    if has_backslash:
+    print(f"  residue: {residue}  反斜杠残留: {has_backslash}  响应含residue字段: {has_residue_field}")
+    if has_backslash or not has_residue_field:
         ok_all = False
+    # 极限读法回归断言（9cc0aeae 曾退化成「极限下标 x →0」）
+    if desc.startswith("lim"):
+        if "lim(x→0)" not in out or "极限下标" in out:
+            print("  FAIL: 极限读法回归，期望 lim(x→0) 且不含「极限下标」")
+            ok_all = False
     print()
 
 print("云端复验:", "全部通过" if ok_all else "存在问题")

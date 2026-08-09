@@ -210,6 +210,19 @@
     ]
   },
   {
+    "id": "latex_limit_spoken",
+    "category": "极限",
+    "text": "求 $\\lim_{x \\to 0} \\frac{x - \\sin x}{x^2}$ 的值。",
+    "profile": "spoken_structured",
+    "expected": [
+      "lim(x→0)",
+      "x 减 sinx"
+    ],
+    "forbidden": [
+      "极限下标"
+    ]
+  },
+  {
     "id": "definite_integral",
     "category": "定积分",
     "text": "计算 \\int_a^b f(x) dx。",

@@ -161,7 +161,17 @@ def _normalize_attached_braced_scripts(text: str) -> tuple[str, list[str]]:
     while i < len(text):
         out.append(text[i])
         if re.match(r"[A-Za-z0-9)\]]", text[i]):
-            lower, upper, end = _read_braced_subsup(text, i + 1)
+            # 守卫：当前字符若是 LaTeX 命令名的尾巴（如 \lim 的 m），
+            # 后面的 _{...} 属于命令自身（\lim_{x\to 0}），留给
+            # _LATEX_RULES 的专用规则（LaTeX极限）处理；若在这里被
+            # 当普通下标吃掉，极限会退化成「极限下标 x →0」的难听读法。
+            cmd = False
+            k = i
+            while k >= 0 and text[k].isalpha():
+                k -= 1
+            if k >= 0 and text[k] == "\\" and 0 < i - k <= 16:
+                cmd = True
+            lower, upper, end = (None, None, i + 1) if cmd else _read_braced_subsup(text, i + 1)
             if lower is not None or upper is not None:
                 if lower is not None:
                     lower_norm, lower_rules = _normalize_latex_structures(lower)

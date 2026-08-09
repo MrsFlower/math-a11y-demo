@@ -52,6 +52,20 @@ async def _utf8_json(request, call_next):
         response.headers["content-type"] = "application/json; charset=utf-8"
     return response
 
+
+@app.middleware("http")
+async def _api_auth(request, call_next):
+    """FC 触发器改匿名后（静态展示页需公网可开），由应用自己守住 /api/*。
+    /api/health 放开便于探活与面板健康检查；其余 /api 路由必须带 Bearer token。"""
+    path = request.url.path
+    if path.startswith("/api/") and path != "/api/health":
+        want = f"Bearer {config.API_AUTH_TOKEN}"
+        if request.headers.get("authorization", "").strip() != want:
+            return JSONResponse(
+                {"error": "Authorization header is expected but missing"}, status_code=401
+            )
+    return await call_next(request)
+
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 if not STATIC_DIR.is_dir():
     # 百炼高代码部署时 wheel 只含 Python 包，静态页随 app/static 子包安装

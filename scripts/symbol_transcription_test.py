@@ -3,6 +3,7 @@
 
 用法：
     python scripts/symbol_transcription_test.py 8321          # 默认走规则引擎（确定性、零额度消耗）
+    python scripts/symbol_transcription_test.py https://example.com
     python scripts/symbol_transcription_test.py 8321 --llm    # 强制走大模型（慢、消耗免费额度）
 
 检查项（对齐任务书）：
@@ -15,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -44,9 +46,11 @@ def check_output(text: str) -> list[str]:
 
 
 def main() -> int:
-    port = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].isdigit() else "8321"
+    target = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "8321"
     engine = "llm" if "--llm" in sys.argv else "rules"
-    base = f"http://127.0.0.1:{port}"
+    base = target.rstrip("/") if target.startswith(("http://", "https://")) else f"http://127.0.0.1:{target}"
+    token = os.getenv("API_AUTH_TOKEN", "258697c6-125d-40d0-943d-38c7bb817b5a").strip()
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
     cases = json.loads(CASES_PATH.read_text(encoding="utf-8"))
 
     print(f"转译测试：{len(cases)} 条用例，引擎 = {engine}，服务 = {base}")
@@ -57,6 +61,7 @@ def main() -> int:
             profile = case.get("profile", "unicode_compact")
             resp = httpx.post(
                 f"{base}/api/transcribe-symbols",
+                headers=headers,
                 json={
                     "text": case["text"],
                     "source_type": "plain_text",
