@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>产品介绍与使用指南 · 数学公式无障碍学习助手</title>
+  <style>
+    :root { --bg: #0f2a52; --fg: #fff; --sub: #cfe0ff; --accent: #7fd18f; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--fg);
+      margin: 0; line-height: 1.9; }
+    main { max-width: 46rem; margin: 0 auto; padding: 2.4rem 1.2rem 3rem; }
+    h1 { font-size: 1.9rem; margin: 0 0 0.4rem; }
+    h2 { font-size: 1.3rem; margin: 2.2rem 0 0.5rem; border-left: 4px solid var(--accent); padding-left: 0.6rem; }
+    h3 { font-size: 1.08rem; margin: 1.4rem 0 0.3rem; color: #e8efff; }
+    p.lead { color: var(--sub); margin: 0 0 1.4rem; }
+    p, li, dd { color: #e8efff; }
+    ol, ul { padding-left: 1.5rem; }
+    li { margin: 0.35rem 0; }
+    kbd { display: inline-block; background: #1d3f73; border: 1px solid #4a6da3; border-radius: 4px;
+      padding: 0 0.45em; font-family: Consolas, monospace; font-size: 0.95em; color: #fff; }
+    .tip { border: 1px solid #4a6da3; border-radius: 8px; padding: 0.6rem 0.9rem; color: var(--sub);
+      background: rgba(255,255,255,0.04); margin: 0.8rem 0; }
+    nav.toc { margin: 1.2rem 0 0; }
+    nav.toc a, a { color: var(--sub); }
+    table { border-collapse: collapse; margin: 0.6rem 0 1rem; width: 100%; }
+    caption { text-align: left; color: var(--sub); padding-bottom: 0.3rem; }
+    th, td { border: 1px solid #4a6da3; padding: 0.35rem 0.6rem; text-align: left; }
+    th { background: #1d3f73; }
+    .back { display: inline-block; margin-bottom: 1rem; color: var(--sub); }
+    .cta { display: inline-block; font-size: 1.05rem; padding: 0.55rem 1.3rem; border-radius: 8px;
+      background: var(--accent); color: #08301a; font-weight: bold; text-decoration: none; margin: 1.2rem 0.6rem 0 0; }
+    .cta.secondary { background: transparent; color: var(--fg); border: 1px solid var(--sub); }
+    .cta:hover, .cta:focus, a:focus { outline: 3px solid #fff; outline-offset: 2px; }
+    footer { color: var(--sub); font-size: 0.92rem; border-top: 1px solid #2a4a7a; margin-top: 2.5rem; padding-top: 1rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="sr-only" href="#part-2">跳过产品介绍，直接看使用教程</a>
+    <a class="back" href="./index.html">← 返回首页</a>
+    <h1>产品介绍与使用指南</h1>
+    <p class="lead">面向视障用户（读屏用户）编写，全程只需键盘操作。
+      分两部分：第一部分介绍产品是什么，第二部分是一步步的使用教程。
+      还没安装插件的，请先读 <a href="./install.html">插件安装指引（读屏版）</a>。</p>
+
+    <nav class="toc" aria-label="本页目录">
+      <p><a href="#what">这是什么</a> · <a href="#modes">两种工作模式</a> · <a href="#privacy">隐私说明</a> ·
+        <a href="#part-2">使用教程：第 1~7 步</a> · <a href="#faq">常见问题</a> · <a href="#keys">键盘速查表</a></p>
+    </nav>
+
+    <h2 id="what">这是什么</h2>
+    <p>「数学公式无障碍学习助手」是一个浏览器插件，帮助视障学生处理数学、物理、化学中的理科符号。
+      它解决两个问题：</p>
+    <ol>
+      <li><strong>读得出来</strong>（转译）：屏幕阅读器读不懂
+        <code>∫f(x)e^(−iωx)dx</code> 这样的符号串，本工具把它转成完整的中文句子：
+        「对 f(x) 乘以 e 的 负 i 欧米伽 x 次方，关于 x 积分」。转译结果可以直接听，也可以复制回文档。</li>
+      <li><strong>学得明白</strong>（讲解）：不只是念出来，还能讲解这个公式是什么、解决什么问题、
+        每个变量什么意思，并且支持继续追问，就像有位老师坐在旁边。</li>
+    </ol>
+    <h3>它能处理什么</h3>
+    <ul>
+      <li>数学公式：根号、分数、上下标、积分、极限、导数（y'' 会正确读作「y 二阶导数」）、集合、几何符号</li>
+      <li>化学式与反应式：H2O、SO4^2-、2H2+O2=2H2O</li>
+      <li>LaTeX 源码：<code>\frac{a}{b}</code>、<code>\int_0^1 x^2 dx</code></li>
+      <li>混在题目文字里的公式：整段粘贴进来，自动识别</li>
+    </ul>
+
+    <h2 id="modes">两种工作模式</h2>
+    <table>
+      <caption>转译与讲解的分工</caption>
+      <thead><tr><th scope="col">模式</th><th scope="col">用途</th><th scope="col">速度</th></tr></thead>
+      <tbody>
+        <tr><td>转译（默认）</td><td>把符号变成可读纯文本，不解释</td><td>快，常见符号本地规则秒转</td></tr>
+        <tr><td>讲解</td><td>讲解公式含义，支持追问</td><td>联网调用 AI，约几秒到几十秒</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="privacy">隐私说明</h2>
+    <ul>
+      <li>你输入的文字会发送到理解服务（默认是开发者部署的云服务）；讲解会进一步调用阿里云百炼 AI 接口</li>
+      <li>历史记录只保存在你自己电脑的浏览器里，不会上传</li>
+      <li>不收集账号、不收集浏览记录</li>
+    </ul>
+
+    <h2 id="part-2">使用教程</h2>
+
+    <h3>第 1 步：打开助手侧边栏</h3>
+    <p>插件默认已连好云端服务，不需要任何配置。在任意网页上按
+      <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>，右侧会打开助手侧边栏，
+      你会听到顶部状态区的欢迎提示。再按一次工具栏图标可关闭侧边栏。</p>
+
+    <h3>第 2 步：三十秒上手（粘贴 → 转译 → 复制）</h3>
+    <p>这是最常用的最小闭环，全程只用 Tab、回车和粘贴键：</p>
+    <ol>
+      <li>按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> 打开侧边栏</li>
+      <li>按 Tab 进入粘贴输入框（名称是「手动粘贴需要转译的公式」），按 <kbd>Ctrl</kbd>+<kbd>V</kbd>
+        粘贴内容。例如粘贴：<code>∫f(x)e^(−iωx)dx</code></li>
+      <li>按 Tab 到「转译粘贴的公式」按钮，按回车</li>
+      <li>状态区会播报「转译完成。置信度：高」，此时焦点已自动落在「复制转译结果」按钮，直接回车即可复制</li>
+      <li>到记事本或作业文档按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴，得到：
+        「对 f(x) 乘以 e 的 负 i 欧米伽 x 次方，关于 x 积分」</li>
+    </ol>
+    <p class="tip">提示：面板顶部的状态区是「实时播报区」，每一步的结果都会自动读出来；
+      不确定进行到哪一步时，把光标移到页面顶部附近听状态区即可。</p>
+
+    <h3>第 3 步：选择转译风格</h3>
+    <ul>
+      <li><strong>结构朗读</strong>（默认，推荐读屏用户）：输出完整中文句子，听起来自然</li>
+      <li><strong>紧凑文本</strong>（推荐低视力用户或复制回文档）：输出紧凑 Unicode，
+        如「积分 f(x) × e^(-iωx)dx」</li>
+    </ul>
+    <p>切换方法：转译结果出来后，焦点附近就有「换朗读风格」按钮，回车立即按另一种风格重新转译并播报新结果；
+      不习惯再按一次即可换回。</p>
+
+    <h3>第 4 步：从网页把内容送进助手（两种方式）</h3>
+    <p><strong>方式一：选中后按快捷键（推荐）</strong></p>
+    <ol>
+      <li>在网页上用 <kbd>Shift</kbd>+光标键选中一段含公式的文字</li>
+      <li>按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>，侧边栏打开并自动开始转译，几秒后听到「转译完成」</li>
+    </ol>
+    <p><strong>方式二：右键菜单</strong></p>
+    <ol>
+      <li>选中文字后按菜单键（或 <kbd>Shift</kbd>+<kbd>F10</kbd>）</li>
+      <li>找到「用公式助手处理选中内容」，回车，侧边栏打开并自动处理</li>
+    </ol>
+    <p class="tip">侧边栏打开后，主按钮「转译选中公式」也可以直接把当前选中的内容送入转译，
+      适合快捷键被其他软件占用时使用。</p>
+
+    <h3>第 5 步：讲解链路（让公式学得明白）</h3>
+    <ol>
+      <li>打开侧边栏后 Tab 到「自动提取页面所有公式」按钮回车，插件会扫描当前网页的所有公式</li>
+      <li>听到「找到的公式」列表后，按数字键 1~9 直接选对应公式，或 Tab 逐条选择</li>
+      <li>进入「识别结果需要确认」：插件先把识别结果读给你听（朗读预览），焦点已落在「确认并讲解」按钮——
+        确认无误直接回车；若识别有误，按 <kbd>Shift</kbd>+<kbd>Tab</kbd> 进入编辑框修改后再回车</li>
+      <li>等待约 5~20 秒，听到「讲解完成」后，面板给出讲解内容：
+        「这是什么公式」「一段话总结」「它用来解决什么问题」「直觉解释」「变量说明」</li>
+      <li>想听声音版：Tab 到「听 AI 讲解」按钮回车，再按一次停止</li>
+      <li>想继续问：Tab 到「你的问题」输入框，输入问题（如「为什么分母不能为零」），
+        Tab 到「发送追问」回车，回答会自动播报</li>
+    </ol>
+    <p class="tip">快捷通道：转译完成后，焦点附近就有「进一步讲解这个公式」按钮，回车即可带着刚才的
+      原文直接进入讲解；粘贴的内容也可以直接点「理解粘贴的公式」。</p>
+
+    <h3>第 6 步：历史记录</h3>
+    <ol>
+      <li>Tab 到「历史记录」回车展开</li>
+      <li>历史是标准表格，读屏的表格导航键（NVDA 的 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+方向键）可逐格浏览</li>
+      <li>每行有「载入」（把旧结果回填到面板）和「复制结果」两个按钮</li>
+      <li>「清空历史」按钮会先弹出确认，确认后才会删除</li>
+    </ol>
+
+    <h3>第 7 步：服务设置（进阶，一般不用碰）</h3>
+    <p>插件默认已连云端，正常使用不需要改这里。Tab 到「服务设置」回车展开，可以查看或修改理解服务的地址：
+      开发者远程装过本机服务的用户，把地址改成本机服务地址，Tab 到「保存并测试连接」回车，
+      听到「连接成功」即可；改错了想恢复，断连时焦点会落在「恢复默认云端服务」按钮上，回车一键恢复。</p>
+
+    <h2 id="faq">常见问题</h2>
+    <dl>
+      <dt><strong>问：状态区播报「无法连接理解服务」？</strong></dt>
+      <dd>先检查电脑是否联网；此时焦点会落在「恢复默认云端服务」按钮上，按回车一键回到默认云端并自动测试连接；
+        仍不行就是云服务临时不可用，过几分钟再试或联系开发者。</dd>
+      <dt><strong>问：转译之后想直接讲解公式？</strong></dt>
+      <dd>不用找模式开关。粘贴的内容直接点「理解粘贴的公式」；转译结果页有「进一步讲解这个公式」按钮；
+        也可以直接用「自动提取页面所有公式」进入讲解链路。</dd>
+      <dt><strong>问：在 chrome:// 或 Edge 商店页面按 Ctrl+Shift+M 没反应？</strong></dt>
+      <dd>浏览器安全限制，插件无法读取这类页面。请把题目复制后用「手动粘贴」。</dd>
+      <dt><strong>问：转译结果里出现「部分符号未能转换」的提醒？</strong></dt>
+      <dd>这是诚实提醒而不是错误。未转换的符号会保留原样列在提醒里，系统宁可少转也不乱猜。
+        此时可按「用 AI 重新转译」让 AI 处理，或点「进一步讲解这个公式」走讲解链路。</dd>
+      <dt><strong>问：Ctrl+Shift+M 和其他软件快捷键冲突？</strong></dt>
+      <dd>在浏览器 <code>chrome://extensions/shortcuts</code>（或 Edge 的扩展快捷键设置页）
+        里可以修改本插件的快捷键，例如改成 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>。</dd>
+    </dl>
+
+    <h2 id="keys">键盘操作速查表</h2>
+    <table>
+      <caption>常用按键一览</caption>
+      <thead><tr><th scope="col">操作</th><th scope="col">按键</th></tr></thead>
+      <tbody>
+        <tr><td>打开助手面板</td><td>Ctrl+Shift+M</td></tr>
+        <tr><td>选中网页内容并送入</td><td>选中后 Ctrl+Shift+M</td></tr>
+        <tr><td>面板内移动</td><td>Tab / Shift+Tab</td></tr>
+        <tr><td>展开/折叠区域（粘贴、历史、设置）</td><td>回车</td></tr>
+        <tr><td>选择第 N 条公式候选</td><td>数字键 1~9</td></tr>
+        <tr><td>开始转译/分析/复制</td><td>回车（焦点在对应按钮上）</td></tr>
+        <tr><td>停止 AI 朗读</td><td>再按一次「听 AI 讲解」按钮</td></tr>
+        <tr><td>清空历史</td><td>「清空历史」按钮 + 确认</td></tr>
+      </tbody>
+    </table>
+
+    <div>
+      <a class="cta" href="./install.html">查看安装指引</a>
+      <a class="cta secondary" href="./demo.html">先试网页体验版</a>
+    </div>
+
+    <footer>
+      <p>「2026 小有可为 AI 向善创新挑战赛」参赛作品 ·
+        <a href="./index.html">返回首页</a> · 遇到问题或建议，欢迎随时反馈给项目开发者。祝学习顺利。</p>
+    </footer>
+  </main>
+</body>
+</html>

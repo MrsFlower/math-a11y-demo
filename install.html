@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>插件安装指引（读屏友好版）· 数学公式无障碍学习助手</title>
+  <style>
+    :root { --bg: #0f2a52; --fg: #fff; --sub: #cfe0ff; --accent: #7fd18f; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--fg);
+      margin: 0; line-height: 1.9; }
+    main { max-width: 46rem; margin: 0 auto; padding: 2.4rem 1.2rem 3rem; }
+    h1 { font-size: 1.9rem; margin: 0 0 0.4rem; }
+    h2 { font-size: 1.3rem; margin: 2.2rem 0 0.5rem; border-left: 4px solid var(--accent); padding-left: 0.6rem; }
+    p.lead { color: var(--sub); margin: 0 0 1.4rem; }
+    ol, ul { padding-left: 1.5rem; color: #e8efff; }
+    li { margin: 0.35rem 0; }
+    kbd { display: inline-block; background: #1d3f73; border: 1px solid #4a6da3; border-radius: 4px;
+      padding: 0 0.45em; font-family: Consolas, monospace; font-size: 0.95em; color: #fff; }
+    .tip { border: 1px solid #4a6da3; border-radius: 8px; padding: 0.6rem 0.9rem; color: var(--sub);
+      background: rgba(255,255,255,0.04); margin: 0.8rem 0; }
+    nav.toc { margin: 1.2rem 0 0; }
+    nav.toc a { color: var(--sub); }
+    a { color: var(--sub); }
+    .back { display: inline-block; margin-bottom: 1rem; color: var(--sub); }
+    .cta { display: inline-block; font-size: 1.05rem; padding: 0.55rem 1.3rem; border-radius: 8px;
+      background: var(--accent); color: #08301a; font-weight: bold; text-decoration: none; margin: 1.2rem 0.6rem 0 0; }
+    .cta.secondary { background: transparent; color: var(--fg); border: 1px solid var(--sub); }
+    .cta:hover, .cta:focus, a:focus, button:focus { outline: 3px solid #fff; outline-offset: 2px; }
+    footer { color: var(--sub); font-size: 0.92rem; border-top: 1px solid #2a4a7a; margin-top: 2.5rem; padding-top: 1rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="sr-only" href="#step-1">跳过导航，直接看安装步骤</a>
+    <a class="back" href="./index.html">← 返回首页</a>
+    <h1>插件安装指引（读屏友好版）</h1>
+    <p class="lead">面向使用 NVDA、争渡等读屏软件的用户，全程只需键盘。
+      安装一次即可长期使用；更新插件时按第五节操作。预计用时 10 分钟，建议先读完第一节再动手。</p>
+
+    <nav class="toc" aria-label="本页目录">
+      <p><a href="#step-0">一、安装前准备</a> · <a href="#step-1">二、打开扩展管理页</a> ·
+        <a href="#step-2">三、开发人员模式并加载</a> · <a href="#step-3">四、验证安装</a> ·
+        <a href="#step-4">五、更新插件</a> · <a href="#step-5">六、卸载</a> · <a href="#faq">常见问题</a></p>
+    </nav>
+
+    <h2 id="step-0">一、安装前准备</h2>
+    <p>你需要两样东西：</p>
+    <ol>
+      <li><strong>Edge 或 Chrome 浏览器</strong>（Windows 自带 Edge，推荐用 Edge）</li>
+      <li><strong>插件文件包</strong>：首页下载的压缩包（zip），解压后里面有一个名为
+        <code>extension</code> 的文件夹——安装时选的就是它</li>
+    </ol>
+    <p>解压方法：在文件资源管理器里找到压缩包，按菜单键（或 <kbd>Shift</kbd>+<kbd>F10</kbd>），
+      选择「全部解压缩」，回车确认。记住解压后的位置，比如「桌面的 公式助手 文件夹」。</p>
+    <p class="tip">提示：如果开发者通过远程协助帮你安装，你只需要接通话控，
+      下面步骤由对方操作，你可以跟着听一遍熟悉流程。</p>
+
+    <h2 id="step-1">二、打开扩展管理页（Edge）</h2>
+    <ol>
+      <li>打开 Edge 浏览器</li>
+      <li>按 <kbd>Ctrl</kbd>+<kbd>L</kbd>，焦点到地址栏</li>
+      <li>输入 <code>edge://extensions</code> 然后回车</li>
+      <li>听到「扩展」相关内容即到达。这是浏览器的扩展管理页</li>
+    </ol>
+    <p class="tip">Chrome 用户：第 3 步改为输入 <code>chrome://extensions</code>，其余相同。</p>
+
+    <h2 id="step-2">三、打开开发人员模式并加载插件</h2>
+    <ol>
+      <li>在扩展页上<strong>反复按 Tab</strong>，直到读屏读出「开发人员模式 开关 关闭」
+        （大约按 5~10 次，页面版本不同次数不同）</li>
+      <li>按<strong>空格键</strong>打开开关，听到「开发人员模式 开关 打开」</li>
+      <li>继续按 Tab，找到「加载解压缩的扩展」按钮，按回车</li>
+      <li>弹出文件夹选择对话框。用方向键和回车进入你解压的位置，
+        找到并<strong>选中 extension 文件夹</strong>（只选中，不要进去）</li>
+      <li>按 Tab 到「选择文件夹」按钮，回车</li>
+      <li>等待几秒，听到扩展卡片出现（含「数学公式无障碍学习助手」字样）即安装成功</li>
+    </ol>
+    <p class="tip">选错文件夹会提示「清单文件缺失」：说明选到了 extension 的外层或内层，
+      重新加载并选中恰好叫 extension 的那一层即可。</p>
+
+    <h2 id="step-3">四、验证安装成功</h2>
+    <ol>
+      <li>在任意网页按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>，右侧弹出助手侧边栏，
+        读屏会读出「数学公式无障碍学习助手」标题和状态提示；若读屏没声音，按一次 Tab 把焦点移进侧边栏即可</li>
+      <li>再按一次浏览器工具栏上的插件图标可关闭侧边栏</li>
+      <li>插件默认已连好云端服务，不需要任何配置。如果听到「无法连接理解服务」：先检查网络；
+        同时焦点会落在「恢复默认云端服务」按钮上，按回车即可一键恢复；仍不行就联系开发者
+        （本机服务由开发者远程协助安装）</li>
+    </ol>
+
+    <h2 id="step-4">五、更新插件（收到新版本压缩包时）</h2>
+    <ol>
+      <li>解压新压缩包，<strong>覆盖</strong>原来的 extension 文件夹</li>
+      <li>打开扩展管理页（第二节步骤）</li>
+      <li>Tab 到「数学公式无障碍学习助手」的扩展卡片，找到「重新加载」（或刷新图标按钮），回车</li>
+      <li>按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> 验证新版本可用</li>
+    </ol>
+
+    <h2 id="step-5">六、卸载插件</h2>
+    <p>扩展管理页中 Tab 到插件卡片，找到「删除」按钮回车并确认。
+      历史记录会一并清除（历史只存在本机浏览器里）。</p>
+
+    <h2 id="faq">常见问题</h2>
+    <dl>
+      <dt><strong>问：按 Ctrl+Shift+M 没反应？</strong></dt>
+      <dd>可能快捷键被其他软件占用。打开 <code>edge://extensions/shortcuts</code>
+        （Chrome 为 <code>chrome://extensions/shortcuts</code>），找到本插件，
+        把快捷键改成例如 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>。</dd>
+      <dt><strong>问：读屏读不到侧边栏内容？</strong></dt>
+      <dd>先确认焦点在侧边栏内：按几次 Tab 或 Esc 后再 Tab。Edge 侧边栏对 NVDA 支持良好；
+        若仍有问题请记录 NVDA 版本反馈给开发者。</dd>
+      <dt><strong>问：安装时提示「无法加载扩展：清单文件缺失或不可读取」？</strong></dt>
+      <dd>九成是第三步第 4 点选错了文件夹层级，重新选择恰好名为 extension 的文件夹。</dd>
+      <dt><strong>问：提示「此扩展不受支持」？</strong></dt>
+      <dd>确认用的是 Edge 或 Chrome 桌面版（不是手机浏览器）。</dd>
+    </dl>
+
+    <p>安装完成后，请继续阅读 <a href="./guide.html">产品介绍与使用指南</a>，
+      从「第 2 步：三十秒上手」开始体验。</p>
+
+    <div>
+      <a class="cta" href="./guide.html">继续阅读使用指南</a>
+      <a class="cta secondary" href="./math-a11y-extension-user-package-20260809.zip" download>下载插件体验包</a>
+    </div>
+
+    <footer>
+      <p>「2026 小有可为 AI 向善创新挑战赛」参赛作品 ·
+        <a href="./index.html">返回首页</a> · <a href="./demo.html">网页体验版</a></p>
+    </footer>
+  </main>
+</body>
+</html>
