@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>数学公式无障碍学习助手</title>
+  <style>
+    :root { --bg: #0f2a52; --fg: #fff; --sub: #cfe0ff; --accent: #7fd18f; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--fg);
+      margin: 0; line-height: 1.9; }
+    main { max-width: 46rem; margin: 0 auto; padding: 3rem 1.2rem; }
+    h1 { font-size: 2.1rem; margin: 0 0 0.4rem; }
+    p.slogan { font-size: 1.25rem; color: var(--sub); margin: 0 0 1.8rem; }
+    .intro { color: var(--sub); }
+    ul.features { list-style: none; padding: 0; font-size: 1.02rem; color: #e8efff; }
+    ul.features li::before { content: "✓ "; color: var(--accent); font-weight: bold; }
+    .cta { display: inline-block; font-size: 1.15rem; padding: 0.7rem 1.6rem; border-radius: 8px;
+      background: var(--accent); color: #08301a; font-weight: bold; text-decoration: none; margin: 1.2rem 0; }
+    .cta:hover, .cta:focus { outline: 3px solid #fff; }
+    footer { color: var(--sub); font-size: 0.92rem; border-top: 1px solid #2a4a7a; margin-top: 2.5rem; padding-top: 1rem; }
+    footer a { color: var(--sub); }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="sr-only" href="#demo-link">直接跳到体验入口</a>
+    <h1>数学公式无障碍学习助手</h1>
+    <p class="slogan">让每个公式都读得出来、学得明白</p>
+
+    <p class="intro">视障学生用屏幕阅读器学数学，最大的拦路虎是公式：读屏软件要么跳过、
+      要么把「根号 b 的平方减 4ac」读成一串听不懂的符号。本项目把公式从「能听到」推进到「能听懂」。</p>
+
+    <ul class="features">
+      <li>公式转译：本地规则引擎秒转中文读法，大模型兜底</li>
+      <li>AI 讲解：结构读法、公式名称、一句话理解，还能听语音</li>
+      <li>浏览器插件：任意网页选中公式即转译，全程键盘操作、读屏友好</li>
+      <li>云端部署开箱即用，无需任何配置</li>
+    </ul>
+
+    <a id="demo-link" class="cta" href="./demo.html">▶ 立即体验网页版（30 秒上手）</a>
+
+    <p class="intro">网页版展示核心能力；完整体验（任意网页选中公式 + 屏幕阅读器闭环）
+      请安装配套的浏览器插件。</p>
+
+    <footer>
+      <p>「2026 小有可为 AI 向善创新挑战赛」参赛作品 ·
+        源码见本仓库 · 后端基于阿里云百炼高代码应用</p>
+    </footer>
+  </main>
+</body>
+</html>
