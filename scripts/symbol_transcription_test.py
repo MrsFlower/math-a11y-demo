@@ -15,6 +15,7 @@
 """
 from __future__ import annotations
 
+import io
 import json
 import os
 import re
@@ -22,6 +23,9 @@ import sys
 from pathlib import Path
 
 import httpx
+
+# 用例输出含 Unicode 数学字符（²、∞ 等），Windows GBK 控制台直接打会崩
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 CASES_PATH = Path(__file__).resolve().parent.parent / "eval_cases" / "symbol_transcription_cases.json"
 

@@ -40,6 +40,8 @@ function setStatus(msg, kind) {
   el.textContent = msg;
   if (kind === "error") el.dataset.kind = "error";
   else delete el.dataset.kind;
+  // 新状态出现时，上一次断连留下的「一键恢复云端」按钮同步收起，避免旧按钮误导
+  $("cloud-reset-btn").hidden = true;
 }
 
 function looksLikeLatex(text) {
@@ -53,7 +55,7 @@ async function copyText(text, label) {
     await navigator.clipboard.writeText(text);
     setStatus(`${label}已复制到剪贴板。`);
   } catch (e) {
-    setStatus(`复制失败：${e.message}`, "error");
+    setStatus(`复制失败：${e.message}。内容仍显示在结果区，可自行选中后按 Ctrl+C。`, "error");
   }
 }
 
@@ -75,7 +77,16 @@ function backendDownMsg(e) {
     if (e.status) reason = `，错误：HTTP ${e.status}`;
     else if (e.message) reason = `，错误：${e.message}`;
   }
-  return `无法连接理解服务（${apiBase()}）${reason}。请检查网络连接；或在底部「服务设置」里换一个可用的服务地址（本机服务为 http://127.0.0.1:8321）。`;
+  return `无法连接理解服务（${apiBase()}）${reason}。请检查网络连接；按「恢复默认云端服务」按钮可一键还原；也可在底部「服务设置」里换一个可用的服务地址（本机服务为 http://127.0.0.1:8321）。`;
+}
+
+// 后端断连统一播报：除错误文案外显出「一键恢复云端」修复动作；
+// 操作中失败时焦点直接落到修复按钮，读屏用户按 Enter 即可自救
+function announceBackendDown(e, focusFix = true) {
+  setStatus(backendDownMsg(e), "error");
+  const btn = $("cloud-reset-btn");
+  btn.hidden = false;
+  if (focusFix) btn.focus();
 }
 
 // ---------------- 转译风格（状态内部化：不再用可见的单选框） ----------------
@@ -282,7 +293,7 @@ async function explainIncomingText(text, sourceNote) {
       setStatus(`转换失败：${data.error || "未识别出公式"}。可在「开始」区直接粘贴 LaTeX。`, "error");
     }
   } catch (e) {
-    setStatus(backendDownMsg(e), "error");
+    announceBackendDown(e);
   }
 }
 
@@ -365,6 +376,13 @@ async function extractPage() {
 
 function routeCandidate(f) {
   pendingContext = f.context || ""; // 带上公式周围正文，帮后端判断符号含义
+  // 公式列表保留在屏上：听完一条讲解还能靠「附近正文」路标换另一条，
+  // 不必重新扫页；当前选中的条目用 aria-current 标出
+  const idx = candidateItems.indexOf(f);
+  Array.from($("candidates-list").children).forEach((btn, i) => {
+    if (i === idx) btn.setAttribute("aria-current", "true");
+    else btn.removeAttribute("aria-current");
+  });
   if (f.kind === "latex") {
     // 页面自带 LaTeX 源码，识别零误差：不再弹确认，直接开讲
     analyzeLatex(f.latex, f.source, "页面自带源码，识别零误差。");
@@ -407,7 +425,10 @@ function renderTranscribeFallback(data) {
   const warnings = data.warnings || [];
   const residue = data.residue || [];
   const lowConfidence = data.confidence === "low";
-  const needsFallback = data.source !== "llm" && (lowConfidence || warnings.length > 0 || residue.length > 0);
+  // medium（零命中零残留）也要给救济入口：KaTeX 视觉层被拍平这类结构性丢失
+  // 不会留下残留记号，但结果往往是错的
+  const midConfidence = data.confidence === "medium";
+  const needsFallback = data.source !== "llm" && (lowConfidence || midConfidence || warnings.length > 0 || residue.length > 0);
   const aiUnavailable = warnings.some((w) => String(w).includes("AI 重新转译当前不可用"));
   $("transcribe-fallback").hidden = !needsFallback;
   $("transcribe-ai-retry-btn").disabled = aiUnavailable;
@@ -416,17 +437,18 @@ function renderTranscribeFallback(data) {
     return;
   }
   const reasons = [];
-  if (lowConfidence) reasons.push("本次转译置信度低");
+  if (lowConfidence) reasons.push("本次转译置信度低，结果可能有误");
   if (residue.length) reasons.push(`仍有规则未覆盖的记号：${residue.join("、")}`);
   else if (warnings.length) reasons.push(warnings[0].replace(/。$/, ""));
-  const action = aiUnavailable ? "请打开原文手动修改，或稍后在 AI 服务可用时再试。" : "可以用 AI 重新转译，或打开原文手动修改。";
+  else if (midConfidence) reasons.push("没有识别出数学结构，上面的结果可能有误");
+  const action = aiUnavailable ? "请稍后在 AI 服务可用时再试，或联系开发者反馈。" : "建议选「用 AI 重新转译」按钮核对结果。";
   $("transcribe-fallback-reason").textContent = `${reasons.join("；")}。${action}`;
 }
 
 async function startTranscription(text, sourceNote, options) {
   const t = (text || "").trim();
   if (!t) {
-    setStatus("没有可转译的内容。", "error");
+    setStatus("没有可转译的内容。请先选中公式按 Ctrl+Shift+M，或在「开始」区粘贴内容后按「转译粘贴的公式」。", "error");
     return;
   }
   // 新转译开始：收起讲解/追问与上一条转译结果，避免新旧内容混淆
@@ -445,7 +467,7 @@ async function startTranscription(text, sourceNote, options) {
     if (engine) body.engine = engine;
     const data = await apiPost("/api/transcribe-symbols", body);
     if (!data.ok || !data.transcribed_text) {
-      setStatus(`转译失败：${data.error || "未知错误"}`, "error");
+      setStatus(`转译失败：${data.error || "未知错误"}。可再试一次；若仍不行，可在「开始」区直接粘贴 LaTeX。`, "error");
       return;
     }
     lastTranscription = {
@@ -481,7 +503,7 @@ async function startTranscription(text, sourceNote, options) {
       $("transcribe-copy-btn").focus();
     }
   } catch (e) {
-    setStatus(backendDownMsg(e), "error");
+    announceBackendDown(e);
   }
 }
 
@@ -518,13 +540,16 @@ function editTranscriptionSource() {
 // analyzeLatex：拿到可信 LaTeX 后直接开讲（高置信度路径不经过确认框）
 async function analyzeLatex(latex, sourceNote, note) {
   if (!latex) {
-    setStatus("公式为空，请先捕获或粘贴。", "error");
+    setStatus("公式为空。请先选中公式按 Ctrl+Shift+M，或在「开始」区粘贴内容。", "error");
     return;
   }
-  $("candidates").hidden = true;
+  // 不再隐藏候选列表：从提取列表点进来的用户要保留「读法 + LaTeX + 附近正文」
+  // 路标，听完一条还能换另一条；非候选入口（粘贴/确认）进来时列表本就隐藏
   $("confirm-box").hidden = true;
   setAnalyzing(true);
-  setStatus(`已识别公式（${sourceNote}），正在讲解，通常需要 20 秒左右。可按「取消本次分析」停止等待。`);
+  const listKept = !$("candidates").hidden;
+  setStatus(`已识别公式（${sourceNote}），正在讲解，通常需要 20 秒左右。可按「取消本次分析」停止等待。` +
+    (listKept ? "公式列表仍保留在上方，可随时选择其他公式。" : ""));
   abortCtrl = new AbortController();
   try {
     const data = await apiPost(
@@ -558,7 +583,7 @@ async function analyzeLatex(latex, sourceNote, note) {
     if (e.name === "AbortError") {
       setStatus("本次讲解已取消。");
     } else {
-      setStatus(backendDownMsg(e), "error");
+      announceBackendDown(e);
     }
   } finally {
     setAnalyzing(false);
@@ -946,7 +971,7 @@ async function playAiExplanation() {
     });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
-      setStatus(err.error || "语音合成失败。", "error");
+      setStatus(`${err.error || "语音合成失败。"}请再按一次「听 AI 讲解」重试。`, "error");
       return;
     }
     aiAudioUrl = URL.createObjectURL(await resp.blob());
@@ -956,7 +981,7 @@ async function playAiExplanation() {
     btn.textContent = "停止 AI 讲解";
     setStatus("正在播放 AI 语音讲解，再按一次可停止。");
   } catch (e) {
-    setStatus(`语音合成请求出错：${e.message || e}`, "error");
+    setStatus(`语音合成请求出错：${e.message || e}。请检查网络后再按「听 AI 讲解」重试。`, "error");
   } finally {
     btn.disabled = false;
   }
@@ -1035,7 +1060,23 @@ $("api-base-save-btn").addEventListener("click", async () => {
     if (!resp.ok) throw new Error();
     setStatus(`已保存并连接成功：${apiBase()}`);
   } catch (e) {
-    setStatus(`已保存，但连不上 ${apiBase()}。请确认服务已启动，或改回默认地址。`, "error");
+    setStatus(`已保存，但连不上 ${apiBase()}。请确认服务已启动；或按上方「恢复默认云端服务」一键还原。`, "error");
+    $("cloud-reset-btn").hidden = false;
+  }
+});
+
+// 连接失败时的一键自救：清掉自定义地址回到默认云端并当场测连，
+// 免得读屏用户摸进「服务设置」手动清空地址
+$("cloud-reset-btn").addEventListener("click", async () => {
+  try { localStorage.removeItem(API_KEY); } catch (e) { /* 忽略 */ }
+  $("api-base-input").value = DEFAULT_API;
+  setStatus("已恢复默认云端地址，正在测试连接…");
+  try {
+    const resp = await fetch(apiBase() + "/api/health", { headers: authHeaders() });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    setStatus(`连接成功：已恢复云端服务。可以重试刚才的操作了。`);
+  } catch (e) {
+    setStatus(`云端服务暂时也连不上（${DEFAULT_API}）。可能是临时波动，请过几分钟再试；仍不行请联系开发者。`, "error");
   }
 });
 
@@ -1078,6 +1119,6 @@ chrome.runtime.onMessage.addListener((msg) => {
     const resp = await fetch(apiBase() + "/api/health", { headers: authHeaders() });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   } catch (e) {
-    setStatus(backendDownMsg(e), "error");
+    announceBackendDown(e, false); // 开面板健康检查：只显恢复按钮，不抢焦点
   }
 })();

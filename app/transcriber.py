@@ -369,10 +369,11 @@ _LATEX_RULES: list[tuple[str, re.Pattern, str | object]] = [
     ("LaTeX极限", re.compile(r"\\lim_\{([^{}]*)\}\s*"), _latex_lim),
     ("LaTeX极限号", re.compile(r"\\lim(?![a-zA-Z])\s*"), "极限"),
     # 常见函数名：去反斜杠保留名称；长名在前（arcsin 先于 sin，sinh 先于 sin），
-    # 否则会被短名前缀吃掉。不补这条，\sin/\ln 残留会每次都静默落到 LLM 兑底烧额度
+    # 否则会被短名前缀吃掉。不补这条，\sin/\ln 残留会每次都静默落到 LLM 兑底烧额度；
+    # 尾部空格保留：\cos 2x 不能连写成 cos2x，否则隐式乘法会拆函数名内部
     ("LaTeX函数名",
      re.compile(r"\\(arcsin|arccos|arctan|sinh|cosh|tanh|sin|cos|tan|cot|sec|csc|ln|log|exp|max|min|sup|inf|det|deg|gcd|arg)(?![a-zA-Z])\s*"),
-     lambda m: m.group(1)),
+     lambda m: m.group(1) + " "),
     ("LaTeX无穷", re.compile(r"\\infty(?![a-zA-Z])\s*"), "∞"),
     ("LaTeX不属于", re.compile(r"\\notin(?![a-zA-Z])\s*"), "∉"),
     ("LaTeX指数", re.compile(r"(?<=[\w)\]])\^\{([^{}]*)\}"), lambda m: _sup_inner(m.group(1))),
@@ -580,6 +581,7 @@ def _speak_expr(s: str) -> str:
     out = _speak_sqrt(out)
     out = out.replace("±", " 加减 ")
     out = out.replace("×", " 乘以 ")
+    out = _implicit_mult(out)
     # 二元减号（前面有词项）读「减」，一元负号（开头/左括号后）读「负」；
     # 前瞻只排除 ASCII 字母数字：Python 的 \w 含中文，否则「平方-4ac」永远不触发；
     # 减号两侧允许空格（LaTeX 风格 x - y），整段连空格一起替换
@@ -588,6 +590,49 @@ def _speak_expr(s: str) -> str:
     out = out.replace("+", " 加 ")
     out = out.replace("=", " 等于 ")
     return re.sub(r"\s+", " ", out).strip()
+
+
+_SPOKEN_FUNCS = ("arcsin", "arccos", "arctan", "sinh", "cosh", "tanh",
+                "sin", "cos", "tan", "cot", "sec", "csc", "ln", "log",
+                "exp", "lim", "max", "min", "det", "gcd", "arg")
+_FUNC_RE = re.compile(r"\b(?:" + "|".join(_SPOKEN_FUNCS) + r")(?=[a-z])", re.I)
+
+
+def _guard_funcs(text: str) -> str:
+    """函数名后紧跟字母（cosy 连写）时补空格，防隐式乘法把 cosy 拆成 cos × y。"""
+    return _FUNC_RE.sub(lambda m: m.group(0) + " ", text)
+
+
+# 藏函数名时把尾部空格一并纳入保护段，避免「cos x」在字母间拆分里被拆成 c × o × s
+_FUNC_TOKEN_RE = re.compile(r"(?:" + "|".join(_SPOKEN_FUNCS) + r")\s*", re.I)
+
+# 选区常混入正文英文词（如场景标题「原生 MathML（alttext…）」）；字母间拆分
+# 会把它们拆成「M 乘以 a 乘以 t…」。长词优先，保护段同样藏占位符
+_WORD_NAMES = ("KaTeX", "MathML", "MathJax", "LaTeX", "alttext", "annotation", "unicode", "Unicode")
+_WORD_TOKEN_RE = re.compile("|".join(_WORD_NAMES), re.I)
+
+
+def _implicit_mult(text: str) -> str:
+    """显式化隐式乘法：数字/右括号紧跟字母、字母紧跟字母都补「乘以」。
+
+    字母间拆分先把函数名、正文英文词整段藏成占位符（否则 cos 会被拆成
+    c × o × s、MathML 会被拆成 M × a × t × h × M × L），拆完立即还原，
+    不影响后续减号/加号规则看到真实文本。
+    """
+    out = _guard_funcs(text)
+    out = re.sub(r"([0-9)])\s*(?=[A-Za-zα-ωΑ-Ω])", r"\1 乘以 ", out)
+    stash: list[str] = []
+
+    def keep(m: re.Match) -> str:
+        stash.append(m.group(0))
+        return "\x00%d\x00" % (len(stash) - 1)
+
+    out = _WORD_TOKEN_RE.sub(keep, out)
+    out = _FUNC_TOKEN_RE.sub(keep, out)
+    out = re.sub(r"([A-Za-z])(?=[A-Za-z])", r"\1 乘以 ", out)
+    if stash:
+        out = re.sub(r"\x00(\d+)\x00", lambda m: stash[int(m.group(1))], out)
+    return out
 
 
 def _speak_sqrt(text: str) -> str:
@@ -613,8 +658,13 @@ def _speak_sqrt(text: str) -> str:
     return "".join(out)
 
 
+def _is_simple_term(spoken: str) -> bool:
+    """单个数/字母/根号记号（无运算符、无嵌套结构词）：读分时不必再报括号。"""
+    return not re.search(r"[+\-−=（）()]|乘|减|加|分之|次方|积分", spoken)
+
+
 def _speak_fractions(text: str) -> tuple[str, int]:
-    """(分子)/(分母) → 分母 分之 括号分子括号；括号配对扫描，支持嵌套。"""
+    """(分子)/(分母) → 分母 分之 分子；复杂分子才报「括号…括号」。"""
     n = 0
     while n < 20:
         m = re.search(r"\)\s*/\s*", text)
@@ -639,7 +689,8 @@ def _speak_fractions(text: str) -> tuple[str, int]:
             den = _speak_expr(dm.group(0))
             end = after + dm.end()
         num = _speak_expr(text[open_idx + 1:close_idx])
-        text = text[:open_idx] + f"{den} 分之，括号 {num} 括号" + text[end:]
+        num_part = num if _is_simple_term(num) else f"括号 {num} 括号"
+        text = text[:open_idx] + f"{den} 分之 {num_part}" + text[end:]
         n += 1
     return text, n
 
@@ -651,6 +702,9 @@ def _speak_atom(text: str) -> str:
     out = out.replace("∞", "无穷")
     for sym, spoken in _GREEK_SPOKEN.items():
         out = out.replace(sym, spoken)
+    # 幂的幂/复杂指数里的上标先口语化：-x² 读「负 x 平方」而非「负 x 的 2 次方」，
+    # 避免外层再套一次「次方」时出现「的…的…次方次方」双层嵌套
+    out = _SUP_RUN.sub(_speak_sup_run, out)
     out = re.sub(r"(?<=[A-Za-z0-9)\u4e00-\u9fff²³⁴⁵⁶⁷⁸⁹])\s*-\s*(?=[A-Za-z0-9\u4e00-\u9fff])", " 减 ", out)
     out = re.sub(r"(?<![A-Za-z0-9])-(?=[A-Za-z0-9\u4e00-\u9fff])", "负 ", out)
 
@@ -661,6 +715,7 @@ def _speak_atom(text: str) -> str:
 
     out = re.sub(r"([A-Za-z])\^\(([^()]*)\)", exp_repl, out)
     out = out.replace("×", " 乘以 ")
+    out = _implicit_mult(out)
     out = out.replace("+", " 加 ")
     out = out.replace("=", " 等于 ")
     out = re.sub(r"\s+", " ", out).strip()

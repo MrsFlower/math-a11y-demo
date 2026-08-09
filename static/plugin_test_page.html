@@ -16,8 +16,9 @@
 <body>
   <h1>插件捕获测试页</h1>
   <p class="note">本页手工构造了各渲染器的真实 DOM 结构（不加载 CDN，离线可测）。
-    预期「提取本页公式」找到 10 条：场景 1-5 是 5 条渲染结构（前 4 条 kind=latex，第 5 条 kind=text），
-    场景 6 的 1 条与场景 7 的 4 条是正文纯文本公式（kind=text，共 5 条）。</p>
+    预期「提取本页公式」找到 20 条：场景 1-5 是 5 条渲染结构（前 4 条 kind=latex，第 5 条 kind=text），
+    场景 6 的 1 条与场景 7 的 4 条是正文纯文本公式（kind=text），
+    场景 9 的 4 条 MathJax v2 源码（kind=latex）与 6 条含数学记号的段落（kind=text，含本页 note）。</p>
 
   <section>
     <h2>1. KaTeX 结构（annotation 自带 LaTeX）</h2>
@@ -74,6 +75,31 @@
     <p id="visual-3">样例三：化学式 H2O、CO2、SO4^2-。</p>
     <p id="visual-4">样例四：根号 sqrt(3x+1) 与对数 log_2(x)。</p>
     <p class="note">选中任一行按 Ctrl+Shift+M 或右键送入插件，预期走转译流程（不强制 LaTeX 确认）。</p>
+  </section>
+
+  <section>
+    <h2>8. KaTeX 视觉层（无 annotation 源码，AI Studio 真实样例）</h2>
+    <p class="note">来自 aistudio.google.com 试卷页的真实 DOM：不带源码层，只能靠 selection_reader.js
+      的 katexHtmlToTex 逆解析重建 LaTeX。预期选中后按 Ctrl+Shift+M：
+      D 选项读「负 2 乘以 x 乘以 e 的 负 x 的平方 次方」，A 选项读「1 减 cos y 分之 1」。
+      右键菜单同样适用（不再用浏览器拍平文本）。</p>
+    <p id="aistudio-d">D. <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height: 1.0702em; vertical-align: -0.0833em;"></span><span class="mord">−</span><span class="mord">2</span><span class="mord mathnormal">x</span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height: 0.9869em;"><span class="" style="top: -3.063em; margin-right: 0.05em;"><span class="pstrut" style="height: 2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight"><span class="mord mathnormal mtight">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height: 0.8913em;"><span class="" style="top: -2.931em; margin-right: 0.0714em;"><span class="pstrut" style="height: 2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span> 是函数的导数</p>
+    <p id="aistudio-a">A. <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height: 1.3262em; vertical-align: -0.4811em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height: 0.8451em;"><span class="" style="top: -2.655em;"><span class="pstrut" style="height: 3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mbin mtight">−</span><span class="mop mtight"><span class="mtight">c</span><span class="mtight">o</span><span class="mtight">s</span></span><span class="mspace mtight" style="margin-right: 0.1952em;"></span><span class="mord mathnormal mtight" style="margin-right: 0.0359em;">y</span></span></span></span><span class="" style="top: -3.23em;"><span class="pstrut" style="height: 3em;"></span><span class="frac-line" style="border-bottom-width: 0.04em;"></span></span><span class="" style="top: -3.394em;"><span class="pstrut" style="height: 3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">&#8203;</span></span><span class="vlist-r"><span class="vlist" style="height: 0.4811em;"><span class=""></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></span></span></span> 是原函数</p>
+  </section>
+
+  <section>
+    <h2>9. MathJax v2 选择题（源码 script 与渲染容器是相邻兄弟节点，真实反馈样例重建）</h2>
+    <p class="note">重建自真实反馈：「24. 下列广义积分收敛的是」选择题。MathJax v2 的源码
+      script[type="math/tex"] 与渲染容器是相邻兄弟节点，不在容器内部：提取本页公式整页扫
+      script 所以正确；但选中发送以前只克隆到容器拿不到源码，只剩拍平的视觉文本
+      （如「∫1+∞x21dx」），转译出乱码。现 selection_reader.js 会补看相邻 script。
+      预期：选中 D 选项按 Ctrl+Shift+M，读「积分，从 1 到 正无穷大，分数，分子是 1，
+      分母是 x 的平方，分数结束，d x」；从提取列表点开公式后，列表应保留不消失。</p>
+    <p id="mj2-stem">24. 下列广义积分收敛的是（ ）。</p>
+    <p id="mj2-a">A. <script type="math/tex">\int_1^{+\infty} \frac{1}{x} dx</script><span class="MathJax" aria-hidden="true"><span>∫</span><span>1</span><span>+∞</span><span>x</span><span>1</span><span>dx</span></span></p>
+    <p id="mj2-b">B. <script type="math/tex">\int_0^{1} \frac{1}{x^2} dx</script><span class="MathJax" aria-hidden="true"><span>∫</span><span>0</span><span>1</span><span>x</span><span>2</span><span>1</span><span>dx</span></span></p>
+    <p id="mj2-c">C. <script type="math/tex">\int_e^{+\infty} \frac{1}{x \ln x} dx</script><span class="MathJax" aria-hidden="true"><span>∫</span><span>e</span><span>+∞</span><span>x</span><span>ln</span><span>x</span><span>1</span><span>dx</span></span></p>
+    <p id="mj2-d">D. <script type="math/tex">\int_1^{+\infty} \frac{1}{x^2} dx</script><span class="MathJax" aria-hidden="true"><span>∫</span><span>1</span><span>+∞</span><span>x</span><span>2</span><span>1</span><span>dx</span></span></p>
   </section>
 </body>
 </html>

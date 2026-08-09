@@ -51,6 +51,8 @@
   <section id="sec-transcribe" aria-labelledby="transcribe-heading" hidden>
     <h2 id="transcribe-heading">转译结果（读屏友好读法）</h2>
     <pre id="out-transcribe"></pre>
+    <button id="btn-listen-transcribe" class="secondary">听这段读法</button>
+    <p class="muted">这就是屏幕阅读器用户实际会听到的内容。</p>
   </section>
 
   <section id="sec-explain" aria-labelledby="explain-heading" hidden>
@@ -97,7 +99,7 @@ document.querySelectorAll(".examples button").forEach((b) =>
   })
 );
 
-const busy = (on) => ["btn-transcribe", "btn-explain", "btn-tts"].forEach((id) => ($(id).disabled = on));
+const busy = (on) => ["btn-transcribe", "btn-explain", "btn-tts", "btn-listen-transcribe"].forEach((id) => ($(id).disabled = on));
 
 $("btn-transcribe").addEventListener("click", async () => {
   const text = $("demo-input").value.trim();
@@ -110,7 +112,7 @@ $("btn-transcribe").addEventListener("click", async () => {
     $("sec-transcribe").hidden = false;
     setStatus(`转译完成。置信度：${data.confidence || "未知"}。`);
   } catch (e) {
-    setStatus(`转译失败：${e.message}`, "error");
+    setStatus(`转译失败：${e.message}。请再试一次，或换一个示例公式。`, "error");
   } finally { busy(false); }
 });
 
@@ -124,7 +126,7 @@ $("btn-explain").addEventListener("click", async () => {
     let latex = text;
     if (!looksLikeLatex(text)) {
       const norm = await apiPost("/api/normalize-input", { text });
-      if (!norm.latex) throw new Error(norm.error || "未识别出公式");
+      if (!norm.latex) throw new Error(norm.error || "未识别出公式。请换一个更明确的写法，或点上方示例公式");
       latex = norm.latex;
     }
     const data = await apiPost("/api/parse-latex", { latex, with_explanation: true });
@@ -137,7 +139,7 @@ $("btn-explain").addEventListener("click", async () => {
     $("sec-explain").hidden = false;
     setStatus("讲解完成。可点「听 AI 讲解」。");
   } catch (e) {
-    setStatus(`讲解失败：${e.message}`, "error");
+    setStatus(`讲解失败：${e.message}。请再试一次；大模型偶尔拥堵，稍等几十秒重试通常就好。`, "error");
   } finally { busy(false); }
 });
 
@@ -160,7 +162,32 @@ $("btn-tts").addEventListener("click", async () => {
     await audio.play();
     setStatus("正在播放 AI 讲解。");
   } catch (e) {
-    setStatus(`语音失败：${e.message}`, "error");
+    setStatus(`语音失败：${e.message}。请再点一次「听 AI 讲解」。`, "error");
+  } finally { busy(false); }
+});
+
+// 试听转译结果：把「读屏友好读法」直接念出来，不用装读屏器也能感受产品本质
+let previewAudio = null;
+$("btn-listen-transcribe").addEventListener("click", async () => {
+  const text = $("out-transcribe").textContent.trim();
+  if (!text) return;
+  if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+  busy(true);
+  setStatus("正在合成语音…");
+  try {
+    const resp = await fetch(API + "/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ text }),
+    });
+    if (!resp.ok) throw new Error("语音合成失败");
+    const url = URL.createObjectURL(await resp.blob());
+    previewAudio = new Audio(url);
+    previewAudio.onended = () => { URL.revokeObjectURL(url); previewAudio = null; setStatus("读法试听播放完毕。"); };
+    await previewAudio.play();
+    setStatus("正在朗读转译结果。");
+  } catch (e) {
+    setStatus(`语音失败：${e.message}。请再点一次「听这段读法」。`, "error");
   } finally { busy(false); }
 });
 </script>

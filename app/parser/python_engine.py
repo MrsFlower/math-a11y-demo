@@ -79,6 +79,21 @@ INVISIBLE = {"\u2061", "\u2062", "\u2063", "\u2064", "\u00a0", ""}
 
 BIG_OPS = {"∫": "积分", "∬": "二重积分", "∮": "环路积分", "∑": "求和", "∏": "连乘"}
 
+# 函数名类大算子：下标是参数不是脚标（\lim_{x\to 0} 读 lim(x→0)，不读「lim 下标…」）
+_FUNC_LIKE_OPS = {"lim", "max", "min", "sup", "inf", "det", "gcd", "arg"}
+
+# 撇号族：上标内容若纯由撇号构成，是导数记号不是乘方（y'' → y 二阶导数）
+_PRIME_CHARS = {"\u2032", "\u2033", "\u2034"}  # ′ ″ ‴
+_ORDER_WORDS = {1: "一", 2: "二", 3: "三", 4: "四"}
+
+
+def _prime_count(node) -> int:
+    """节点文本纯由撇号构成时返回撇号数（导数阶数），否则返回 0。"""
+    chars = [c for c in node.get("text", "") if not c.isspace()]
+    if chars and all(c in _PRIME_CHARS for c in chars):
+        return len(chars)
+    return 0
+
 
 def _spoken_token(text: str) -> str:
     """单个符号的中文读法。"""
@@ -224,6 +239,15 @@ def _walk(el, ctx: _Ctx):
         if len(parts) != 2:
             return _row(ctx, parts)
         base, exp = parts
+        # 撇号上标是导数记号：y'' → 「y 二阶导数」，不能按乘方读成「y 的 ″ 次方」
+        primes = _prime_count(exp)
+        if primes:
+            order = _ORDER_WORDS.get(primes, str(primes))
+            return _node(
+                ctx, "derivative", f"{primes} 阶导数（撇号记号）",
+                f"{base['text']}^({exp['text']})",
+                f"{base['spoken']} {order}阶导数", [base, exp],
+            )
         text = f"{base['text']}^({exp['text']})"
         if exp["text"] == "2":
             spoken = f"{base['spoken']} 的平方"
@@ -238,6 +262,14 @@ def _walk(el, ctx: _Ctx):
         if len(parts) != 2:
             return _row(ctx, parts)
         base, sub = parts
+        # 函数名类算子的下标是参数：\lim_{x\to 0} 读「lim(x→0)」。
+        # 朗读用紧凑箭头形（与正则管道惯例一致），不把 → 展开成「趋向于」，
+        # 否则同一公式因走树/走正则不同路线读法不一致。
+        if base.get("role") == "operator" and base["text"] in _FUNC_LIKE_OPS:
+            arg = sub["text"].replace(" ", "")
+            text = f"{base['text']}({arg})"
+            spoken = f"{base['spoken']}({arg})"
+            return _node(ctx, "opscript", f"{base['text']}（带参数）", text, spoken, [base, sub])
         text = f"{base['text']}_({sub['text']})"
         spoken = f"{base['spoken']} 下标 {sub['spoken']}"
         return _node(ctx, "subscript", "下标", text, spoken, [base, sub])
@@ -321,9 +353,43 @@ def _walk(el, ctx: _Ctx):
 
 def _row(ctx: _Ctx, children):
     children = _merge_nabla(ctx, children)
+    children = _merge_diff_tail(ctx, children)
     text = " ".join(c["text"] for c in children if c["text"])
     spoken = " ".join(c["spoken"] for c in children if c["spoken"])
     return _node(ctx, "row", "组合表达式", text, spoken, children)
+
+
+def _merge_diff_tail(ctx: _Ctx, children):
+    """把行尾的微分记号 d x 并入积分读法：「积分，下限…，上限… 分数… d x」
+    → 「从 … 到 …，对 被积式，关于 x 积分」。规则只作用在行的尾段，
+    不影响行内其他结构；没有积分号时 d x 原样保留。
+    守卫：积分号必须领起整行（被积式开头），否则像「F(b)-F(a)=∫…dx」
+    这类等式里 d x 只是右半段尾巴，不该把整行吞并。"""
+    if len(children) < 3 or children[0].get("text", "")[:1] not in ("∫", "∬", "∮"):
+        return children
+    last, var = children[-2], children[-1]
+    if not (
+        last.get("text") == "d"
+        and var.get("role") == "identifier"
+        and len(var.get("text", "")) == 1
+    ):
+        return children
+    integral = children[0]
+    body_nodes = children[1:-2]
+    if not body_nodes:
+        return children
+    if integral.get("role") == "bigop" and len(integral.get("children", [])) == 3:
+        _, lo, hi = integral["children"]
+        spoken = f"从 {lo['spoken']} 到 {hi['spoken']}，对 {_spoken_seq(body_nodes)}，关于 {var['spoken']} 积分"
+    else:
+        spoken = f"对 {_spoken_seq(body_nodes)}，关于 {var['spoken']} 积分"
+    text = f"∫ {body_nodes[0]['text']} d {var['text']}"
+    merged = _node(ctx, "integral-expr", "定积分表达式", text, spoken, [integral] + body_nodes + [last, var])
+    return [merged]
+
+
+def _spoken_seq(nodes) -> str:
+    return " ".join(n["spoken"] for n in nodes if n.get("spoken"))
 
 
 def _merge_nabla(ctx: _Ctx, children):

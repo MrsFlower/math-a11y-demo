@@ -216,7 +216,7 @@
     "profile": "spoken_structured",
     "expected": [
       "lim(x→0)",
-      "x 减 sinx"
+      "x 减 sin x"
     ],
     "forbidden": [
       "极限下标"
@@ -509,7 +509,7 @@
     "expected": [
       "积分(从-∞到",
       "∞)",
-      "e^(-iω x)"
+      "e^(-iωx)"
     ],
     "forbidden": [
       "∈fty",
@@ -536,16 +536,116 @@
     "profile": "spoken_structured",
     "text": "x = (-b ± sqrt(b^2-4ac))/(2a)",
     "expected": [
-      "2a 分之",
+      "2 乘以 a 分之",
       "负 b 加减",
       "根号",
-      "b 的平方 减 4ac"
+      "b 的平方 减 4 乘以 a 乘以 c"
     ],
     "forbidden": [
       "±",
       "√",
       "sqrt",
       "/(2a)"
+    ]
+  },
+  {
+    "id": "derivative_prime_ode_spoken",
+    "category": "导数撇号-微分方程结构朗读",
+    "profile": "spoken_structured",
+    "text": "y'' - 4y' + 4y = e^{2x}",
+    "expected": [
+      "y 二阶导数",
+      "y 一阶导数",
+      "e 的 2 x 次方"
+    ],
+    "forbidden": [
+      "次方 减",
+      "一撇 次方",
+      "′′ 次方"
+    ]
+  },
+  {
+    "id": "derivative_prime_ode_compact",
+    "category": "导数撇号-微分方程紧凑",
+    "text": "y'' - 4y' + 4y = e^{2x}",
+    "expected": [
+      "y″",
+      "y′",
+      "e^(2x)"
+    ],
+    "forbidden": [
+      "次方",
+      "\\prime"
+    ]
+  },
+  {
+    "id": "derivative_unicode_prime_spoken",
+    "category": "导数 Unicode 撇号变体",
+    "profile": "spoken_structured",
+    "text": "f′(x) = 2x",
+    "expected": [
+      "f 一阶导数"
+    ],
+    "forbidden": [
+      "一撇 次方"
+    ]
+  },
+  {
+    "id": "derivative_latex_prime_spoken",
+    "category": "导数 \\prime 命令变体",
+    "profile": "spoken_structured",
+    "text": "y^{\\prime\\prime} + y = 0",
+    "expected": [
+      "y 二阶导数"
+    ],
+    "forbidden": [
+      "一撇 一撇 次方",
+      "\\prime"
+    ]
+  },
+  {
+    "id": "newton_dot_vector_spoken",
+    "category": "点记号与向量-结构朗读",
+    "profile": "spoken_structured",
+    "text": "\\dot{q} = \\vec{u}",
+    "expected": [
+      "q 点",
+      "向量 u"
+    ],
+    "forbidden": [
+      "上方标注",
+      "\\dot",
+      "\\vec"
+    ]
+  },
+  {
+    "id": "delimited_fraction_spoken",
+    "category": "定界符纯公式-结构朗读",
+    "profile": "spoken_structured",
+    "text": "$\\int_1^{+\\infty} \\frac{1}{x^2} dx$",
+    "expected": [
+      "从 1 到",
+      "x 的平方",
+      "关于 x 积分"
+    ],
+    "forbidden": [
+      "\\int",
+      "\\frac",
+      "d x"
+    ]
+  },
+  {
+    "id": "delimited_limit_spoken",
+    "category": "定界符纯公式-极限树路径",
+    "profile": "spoken_structured",
+    "text": "$\\lim_{x \\to 0} \\frac{x - \\sin x}{x^2 \\ln(1+x)}$",
+    "expected": [
+      "lim(x→0)",
+      "x 减 sin x"
+    ],
+    "forbidden": [
+      "极限下标",
+      "趋向于"
     ]
   }
 ]

@@ -63,6 +63,13 @@ EXPLAIN_SYSTEM = """你是一位面向视障学生的数学讲解老师。你的
   并说明“具体含义取决于上下文”，同时把这种歧义写进 common_misunderstandings。
 - 若用户提供了公式所在页面的上下文，优先用上下文确定符号含义和公式领域，并在讲解中自然体现判断依据。
 
+上下文场景结合要求（重要，禁止就公式讲公式）：
+- 若上下文表明公式所处场景（如选择题的某个选项、例题条件、定义、证明步骤），
+  purpose、intuition 与 accessible_summary 的开头必须先用一两句话点明公式在这个场景里的
+  位置与角色（如“这是问哪个广义积分收敛的选择题里的 D 选项”），再讲公式本身。
+- 上下文涉及题目任务时，围绕任务讲这个公式为什么值得注意（如结合收敛性讲衰减快慢），
+  但不要替用户做题、不要直接报选项答案。
+
 只输出下面结构的 JSON（字段全部保留，数组至少给出有价值的内容）：
 {
   "formula_name": "可能的公式名称；不确定就写‘未知公式（根据结构推断）’",
@@ -608,7 +615,9 @@ def explain(latex: str, tree: dict, speech_text: str, context: str | None = None
     if context:
         user_parts.append(
             "【公式所在页面的上下文】\n" + context.strip()[:600]
-            + "\n上下文仅用于判断公式的含义与领域；若上下文与公式本身冲突，以公式为准。"
+            + "\n请结合上下文讲解：先点明公式在上下文里的位置与角色（如选择题的某个选项、例题条件），"
+            + "再讲公式本身；若上下文涉及题目任务，围绕任务讲这个公式为什么值得注意，但不替用户做题、不直接报答案。"
+            + "若上下文与公式本身冲突，以公式为准。"
         )
     user_parts.append(f"结构树（含节点编号）：\n{tree_outline(tree)}")
     user_parts.append(f"整体朗读文本：{speech_text}")
@@ -720,14 +729,31 @@ def _clean_transcription(text: str) -> tuple[str, list[str]]:
     return out, warnings
 
 
+# 结构性丢失哨兵：规则零命中零残留（medium）但文本带数学特征（LaTeX 命令、$…$、
+# 上下标、分数、根号等记号）——说明规则把它拍平错了（如 KaTeX 视觉层文本），
+# 宁可烧一次 LLM 额度也要兜底；普通中文文本不带这些特征，不会误触发
+_MATH_SMELL_RE = re.compile(
+    r"\\[a-zA-Z]|\$[^$]+\$|[⁰¹²³⁴⁵⁶⁷⁸⁹ⁿ]|[_^]\{|[×÷±≤≥≠∞∫∑√]|\d+\s*/\s*\d+"
+)
+
+
+def _suspicious_math(text: str, rule_result: dict) -> bool:
+    """规则一条没命中（medium）却带着数学记号：大概率是结构性丢失，触发 LLM 兜底。"""
+    return rule_result["confidence"] == "medium" and bool(_MATH_SMELL_RE.search(text))
+
+
 def transcribe(text: str, engine: str | None = None, profile: str = "unicode_compact") -> dict:
-    """理科符号转译主入口（第五阶段）。
+    """理科符号转译主入口（第五阶段起，第六阶段接入树形解析）。
+
+    三层兜底链：树形解析（真实语法，确定性）→ 正则管道（混排/化学/单位）
+    → LLM（两条本地路线都盖不住的残余）。树路线只接管纯公式与定界符段，
+    处理不了返回 None，行为对旧语料零回归。
 
     profile：unicode_compact=紧凑纯文本；spoken_structured=适合读屏连续朗读的结构稿。
-    engine：None=自动（规则覆盖得住就不花 LLM 额度）；'rules' 强制规则（可离线、可测试）；
-    'llm' 强制走大模型（规则转不净的复杂内容）。
+    engine：None=自动；'rules' 强制本地（树优先+正则兜底，可离线可测试）；
+    'llm' 强制走大模型。
     """
-    from . import transcriber  # 延迟导入，避免循环
+    from . import transcriber, tree_transcript  # 延迟导入，避免循环
 
     text = (text or "").strip()
     if not text:
@@ -735,6 +761,22 @@ def transcribe(text: str, engine: str | None = None, profile: str = "unicode_com
 
     forced = (engine or "").lower()
     profile = profile if profile in ("unicode_compact", "spoken_structured") else "unicode_compact"
+
+    # 第一层：树形解析。纯公式/$…$ 段走真实语法树，语义规则（撇号=导数等）
+    # 在树节点上局部生效；混排/解析失败时返回 None 自然降级。确定性、零额度。
+    if forced != "llm":
+        tree_out = tree_transcript.try_transcribe(text, profile=profile)
+        if tree_out:
+            return {
+                "ok": True,
+                "transcribed_text": tree_out["transcribed_text"],
+                "confidence": "high",
+                "source": "tree",
+                "applied": tree_out["applied"],
+                "residue": tree_out["residue"],
+                "warnings": [],
+            }
+
     if forced == "rules" or not config.llm_available():
         r = transcriber.rule_transcribe(text, profile=profile)
         warnings: list[str] = []
@@ -756,8 +798,8 @@ def transcribe(text: str, engine: str | None = None, profile: str = "unicode_com
         }
 
     rule_result = transcriber.rule_transcribe(text, profile=profile)
-    if forced == "llm" or rule_result["residue"]:
-        # 规则覆盖不住（或有强制要求）：走 LLM，规则结果作失败兑底
+    if forced == "llm" or rule_result["residue"] or _suspicious_math(text, rule_result):
+        # 规则覆盖不住（或有强制要求）：走 LLM，规则结果作失败兜底
         try:
             profile_hint = (
                 "本次请输出适合读屏连续朗读的结构稿，例如把积分、指数、上下限的视觉结构说清楚。"

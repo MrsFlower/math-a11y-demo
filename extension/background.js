@@ -52,11 +52,22 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== MENU_ID || !tab) return;
   // open() 必须留在用户手势调用栈内，先开面板再投递内容
   chrome.sidePanel.open({ tabId: tab.id });
-  deliverCapture({
-    kind: "selection",
-    text: info.selectionText || "",
-    time: Date.now(),
-  });
+  // 不能用原生 info.selectionText：它是浏览器拍平的纯文本，
+  // MathML/KaTeX 的上标分式结构全丢（勾股定理会变「a2加b2等于c2」）；
+  // 改走 selection_reader.js 清洗，失败时才回退原生文本
+  (async () => {
+    let text = "";
+    try {
+      text = await readSelection(tab);
+    } catch (e) {
+      text = "";
+    }
+    deliverCapture({
+      kind: "selection",
+      text: text || (info.selectionText || ""),
+      time: Date.now(),
+    });
+  })();
 });
 
 chrome.commands.onCommand.addListener(async (command, cmdTab) => {
