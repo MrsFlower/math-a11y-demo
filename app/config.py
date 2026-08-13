@@ -32,7 +32,7 @@ TTS_VOICE = os.getenv("TTS_VOICE", "Cherry").strip()
 # ---- 应用层 API 鉴权 ----
 # FC 触发器改匿名后（静态展示页需公网可开），由应用自己守住 /api/*，防算力被滥用。
 # 默认值与插件内置 token 一致；也可用环境变量 API_AUTH_TOKEN 覆盖。
-API_AUTH_TOKEN = os.getenv("API_AUTH_TOKEN", "258697c6-125d-40d0-943d-38c7bb817b5a").strip()
+API_AUTH_TOKEN = os.getenv("API_AUTH_TOKEN", "YOUR_FC_TRIGGER_TOKEN").strip()
 # 端点从 LLM_BASE_URL 的 origin 推导（兼容专属接入点），也可用环境变量直接覆盖
 _llm_origin = "/".join(LLM_BASE_URL.split("/")[:3]) or "https://dashscope.aliyuncs.com"
 TTS_API_URL = os.getenv(

@@ -135,10 +135,11 @@
 <body>
   <h1>数学公式无障碍学习助手</h1>
 
-  <div id="status" class="status" role="status" aria-live="polite">
+  <div id="status" class="status" role="status" aria-live="polite" tabindex="-1">
     先选中公式或题目区域，再按 Ctrl+Shift+M；也可以直接按下面的主按钮。
   </div>
   <button id="cloud-reset-btn" class="secondary" hidden>恢复默认云端服务</button>
+  <button id="auth-grant-btn" hidden>授权插件读取网页并重试</button>
 
   <section id="shortcut-setup" aria-labelledby="shortcut-setup-heading" hidden>
     <h2 id="shortcut-setup-heading" tabindex="-1">快捷键默认行为</h2>
@@ -271,10 +272,23 @@
       <label class="mode-opt"><input type="radio" name="explain-voice" value="sr" checked> 屏幕阅读器直接读（默认）</label>
       <label class="mode-opt"><input type="radio" name="explain-voice" value="tts"> 自动播放 AI 语音（百炼 TTS）</label>
     </fieldset>
+    <fieldset aria-label="分式读法">
+      <legend class="hint">分式读法（影响公式朗读，对下一次讲解生效）</legend>
+      <label class="mode-opt"><input type="radio" name="fraction-style" value="structured" checked> 结构朗读（默认）：分数，分子是…分母是…，分数结束</label>
+      <label class="mode-opt"><input type="radio" name="fraction-style" value="compact"> 紧凑读法：分母 分之 分子</label>
+    </fieldset>
     <label for="api-base-input">理解服务地址（默认已连云端；改用本机服务才需要改这里，改完点保存）</label>
     <input type="text" id="api-base-input">
     <button id="api-base-save-btn" class="secondary">保存并测试连接</button>
     <p class="hint">把地址清空再保存，会回到默认的云端地址。本机服务需开发者远程安装后才可用。</p>
+    <h3>问题诊断</h3>
+    <p class="hint">遇到「无法提取」或连不上服务时，按下面的按钮生成诊断信息发给开发者。</p>
+    <button id="diag-run-btn" class="secondary">运行诊断</button>
+    <div id="diag-box" hidden>
+      <label for="diag-output">诊断结果（只读）</label>
+      <textarea id="diag-output" rows="10" readonly></textarea>
+      <button id="diag-copy-btn" class="secondary">复制诊断信息</button>
+    </div>
   </details>
 
   <footer>

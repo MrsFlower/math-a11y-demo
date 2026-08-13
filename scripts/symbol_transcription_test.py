@@ -53,7 +53,7 @@ def main() -> int:
     target = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "8321"
     engine = "llm" if "--llm" in sys.argv else "rules"
     base = target.rstrip("/") if target.startswith(("http://", "https://")) else f"http://127.0.0.1:{target}"
-    token = os.getenv("API_AUTH_TOKEN", "258697c6-125d-40d0-943d-38c7bb817b5a").strip()
+    token = os.getenv("API_AUTH_TOKEN", "YOUR_FC_TRIGGER_TOKEN").strip()
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     cases = json.loads(CASES_PATH.read_text(encoding="utf-8"))
 

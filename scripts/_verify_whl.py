@@ -11,6 +11,7 @@ src = z.read("app/transcriber.py").decode("utf-8")
 llm = z.read("app/llm.py").decode("utf-8")
 tree = z.read("app/tree_transcript.py").decode("utf-8")
 engine = z.read("app/parser/python_engine.py").decode("utf-8")
+main = z.read("app/main.py").decode("utf-8")
 
 checks = {
     # 第六阶段：树优先三层兜底链（本轮）
@@ -33,6 +34,9 @@ checks = {
     "_latex_lim 重写": "parts[0].strip()" in src,
     "二元减号允许空格": r"\s*-\s*" in src,
     "结构朗读分式": "_speak_fractions" in src,
+    # 0.8.3：分式读法偏好（fraction_style 参数贯通）
+    "树引擎分式风格分支": "_fraction_spoken" in engine and "FRACTION_STYLES" in engine,
+    "main.py 接收 fraction_style": "fraction_style" in main,
 }
 for k, ok in checks.items():
     print(("PASS" if ok else "FAIL"), k)

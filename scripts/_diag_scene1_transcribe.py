@@ -12,7 +12,7 @@ import websockets
 CDP = "http://127.0.0.1:9333"
 PAGE_URL = "http://127.0.0.1:8321/static/plugin_test_page.html"
 API = "https://highcodzteceggb-azvgiimdkb.cn-beijing.fcapp.run"
-TOKEN = "258697c6-125d-40d0-943d-38c7bb817b5a"
+TOKEN = "YOUR_FC_TRIGGER_TOKEN"
 
 SELECT_SECTION1_AND_READ = r"""(function(){
   var sec = null;

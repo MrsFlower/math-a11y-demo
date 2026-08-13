@@ -8,7 +8,7 @@ import urllib.request
 import websockets
 
 BASE = "https://highcodzteceggb-azvgiimdkb.cn-beijing.fcapp.run"
-TOK = "258697c6-125d-40d0-943d-38c7bb817b5a"
+TOK = "YOUR_FC_TRIGGER_TOKEN"
 HDRS = {"Authorization": f"Bearer {TOK}", "Content-Type": "application/json"}
 
 

@@ -7,7 +7,7 @@ import urllib.request
 sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 BASE = "https://highcodzteceggb-azvgiimdkb.cn-beijing.fcapp.run"
-TOKEN = "258697c6-125d-40d0-943d-38c7bb817b5a"
+TOKEN = "YOUR_FC_TRIGGER_TOKEN"
 
 # (说明, 输入, profile, 必须包含, 禁止出现)
 SAMPLES = [

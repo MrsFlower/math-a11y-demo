@@ -12,3 +12,12 @@ dist/
 
 # Node
 node_modules/
+
+# 本地临时物与提交打包产物
+_tmp_*
+百炼应用奖/
+百炼应用奖.zip
+extension/icons/icon256(1).png
+
+# 含真实鉴权信息的参赛表单附件，不入库
+docs/测试用例与复现说明.md

@@ -78,6 +78,10 @@ class LatexIn(BaseModel):
     latex: str = Field(..., description="LaTeX 公式源码", max_length=5000)
     engine: str | None = Field(None, description="解析引擎：python / sre，缺省用环境变量配置")
     with_explanation: bool = Field(True, description="是否同时生成大模型分层解释")
+    fraction_style: str | None = Field(
+        "structured",
+        description="分式朗读风格：structured=分数，分子是…（默认）/ compact=分母 分之 分子；仅影响 python 路线朗读",
+    )
     context: str | None = Field(
         None, description="公式所在页面的上下文文字（插件提取时顺带抓取），仅用于消歧义", max_length=600
     )
@@ -166,9 +170,9 @@ def _plain_text_version(latex: str, speech: str, explanation: dict) -> str:
     return "\n".join(lines)
 
 
-def _parse_with_engine(latex: str, engine: str) -> dict:
+def _parse_with_engine(latex: str, engine: str, fraction_style: str = "structured") -> dict:
     """统一解析：python 路线必跑（结构树是解释的基础），sre 路线按需补充朗读。"""
-    base = python_engine.parse_latex(latex)
+    base = python_engine.parse_latex(latex, fraction_style=fraction_style)
     result = {
         "latex": latex,
         "mathml": base["mathml"],
@@ -222,7 +226,7 @@ def examples():
 def parse_latex(body: LatexIn):
     engine = (body.engine or config.PARSE_ENGINE).lower()
     try:
-        result = _parse_with_engine(body.latex.strip(), engine)
+        result = _parse_with_engine(body.latex.strip(), engine, fraction_style=body.fraction_style or "structured")
     except ValueError as exc:
         return _err(str(exc))
 
@@ -242,7 +246,9 @@ def parse_latex(body: LatexIn):
 @app.post("/api/explain")
 def explain(body: LatexIn):
     try:
-        base = python_engine.parse_latex(body.latex.strip())
+        base = python_engine.parse_latex(
+            body.latex.strip(), fraction_style=body.fraction_style or "structured"
+        )
     except ValueError as exc:
         return _err(str(exc))
     explanation = llm.explain(body.latex.strip(), base["tree"], base["speech_text"], context=body.context)

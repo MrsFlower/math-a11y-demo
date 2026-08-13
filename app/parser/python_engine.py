@@ -111,11 +111,37 @@ def _strip_ns(tag: str) -> str:
     return tag.split("}")[-1]
 
 
-class _Ctx:
-    """遍历上下文：负责节点编号。"""
+# 分式朗读风格：structured=「分数，分子是…分母是…，分数结束」（默认，嵌套不易歧义）；
+# compact=「分母 分之 分子」（与转译流程 _speak_fractions 口径对齐）。用字符串枚举
+# 而非布尔量，将来新增读法（如斜线式）只需加枚举值与分支。
+FRACTION_STYLES = ("structured", "compact")
 
-    def __init__(self):
+# compact 档括号判定：朗读里含运算符/结构词的分子分母需报「括号…括号」，
+# 否则「1 减 cos x 分之 1」会与「1 减 (cos x 分之 1)」混淆。
+_COMPLEX_SPEAK_RE = re.compile(r"加|减|等于|乘|除以|分之|根号|次方|积分|求和|趋向|括号|，")
+
+
+def _is_simple_term(spoken: str) -> bool:
+    """单个数/字母/函数/根号记号（无运算符、无结构词）：紧凑读分时不必再报括号。"""
+    return not _COMPLEX_SPEAK_RE.search(spoken or "")
+
+
+def _fraction_spoken(ctx: "_Ctx", num: dict, den: dict) -> str:
+    """分式朗读的唯一渲染点：结构还在树节点上时按风格分支，嵌套靠递归天然生效。"""
+    if ctx.fraction_style == "compact":
+        num_s = num["spoken"] if _is_simple_term(num["spoken"]) else f"括号 {num['spoken']} 括号"
+        den_s = den["spoken"] if _is_simple_term(den["spoken"]) else f"括号 {den['spoken']} 括号"
+        return f"{den_s} 分之 {num_s}"
+    return f"分数，分子是 {num['spoken']}，分母是 {den['spoken']}，分数结束"
+
+
+class _Ctx:
+    """遍历上下文：负责节点编号与朗读风格偏好。"""
+
+    def __init__(self, fraction_style: str = "structured"):
         self.counter = 0
+        # 非法值静默回落默认，防前后端版本错配时报错
+        self.fraction_style = fraction_style if fraction_style in FRACTION_STYLES else "structured"
 
     def next_id(self) -> str:
         nid = f"n{self.counter}"
@@ -215,7 +241,7 @@ def _walk(el, ctx: _Ctx):
             text = f"({num['text']})/({den['text']})"
             return _node(ctx, "derivative", label, text, spoken, [num, den])
         text = f"({num['text']})/({den['text']})"
-        spoken = f"分数，分子是 {num['spoken']}，分母是 {den['spoken']}，分数结束"
+        spoken = _fraction_spoken(ctx, num, den)
         return _node(ctx, "fraction", "分数", text, spoken, [num, den])
 
     if tag == "msqrt":
@@ -460,8 +486,11 @@ def _tidy_spoken(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def parse_latex(latex: str) -> dict:
-    """主入口：LaTeX -> {mathml, tree, speech_text}，失败抛出 ValueError。"""
+def parse_latex(latex: str, fraction_style: str = "structured") -> dict:
+    """主入口：LaTeX -> {mathml, tree, speech_text}，失败抛出 ValueError。
+
+    fraction_style：分式朗读风格，structured（默认）/ compact；缺省行为与旧版逐字节一致。
+    """
     latex = latex.strip()
     if not latex:
         raise ValueError("公式为空，请输入 LaTeX。")
@@ -480,7 +509,7 @@ def parse_latex(latex: str) -> dict:
     except ET.ParseError as exc:
         raise ValueError(f"MathML 解析失败：{exc}") from exc
 
-    ctx = _Ctx()
+    ctx = _Ctx(fraction_style)
     tree = _walk(root_el, ctx)
     if tree is None:
         raise ValueError("公式内容为空或无法识别。")

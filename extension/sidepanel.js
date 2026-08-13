@@ -6,11 +6,13 @@
 // 默认连云端（百炼高代码应用 FC 触发器），用户开箱即用；
 // 也可在底部「服务设置」改回本机 http://127.0.0.1:8321
 const DEFAULT_API = "https://highcodzteceggb-azvgiimdkb.cn-beijing.fcapp.run";
-// FC 触发器鉴权 token（无 Authorization 头会被网关拒绝）；对本地服务附带无副作用
-const DEFAULT_TOKEN = "258697c6-125d-40d0-943d-38c7bb817b5a";
+// FC 触发器鉴权 token（无 Authorization 头会被网关拒绝）；对本地服务附带无副作用。
+// 开源版为占位符：请替换为你自己的 FC 触发器 token，或在「服务设置」改指向本地服务。
+const DEFAULT_TOKEN = "YOUR_FC_TRIGGER_TOKEN";
 const API_KEY = "math_a11y_api_base_v1";
 const PROFILE_KEY = "math_a11y_transcribe_profile_v1";
 const EXPLAIN_VOICE_KEY = "math_a11y_explain_voice_v1";
+const FRACTION_STYLE_KEY = "math_a11y_fraction_style_v1";
 const HISTORY_KEY = "math_a11y_history_v1";
 const SHORTCUT_PREF_KEY = "math_a11y_shortcut_prefs_v1";
 const $ = (id) => document.getElementById(id);
@@ -32,8 +34,46 @@ let currentData = null;      // 最近一次分析结果
 let abortCtrl = null;
 let candidateItems = [];     // 当前候选列表（供数字键直选）
 let pendingContext = "";     // 公式所在页面的上下文（仅提取入口有，供后端消歧义）
+let pendingRetry = null;     // 授权成功后要重试的动作（自愈授权流程用）
 
 // ---------------- 状态与工具 ----------------
+
+// 页面注入失败的分类诊断（分类依据见 scripts/_diag_restricted_pages.py 复现结论）
+function classifyInjectError(msg, tabUrl) {
+  const m = String(msg || "");
+  const u = String(tabUrl || "");
+  if (/^edge:\/\/|^chrome:\/\//i.test(u) || /Cannot access (a )?(chrome|edge):/i.test(m)) {
+    return "当前是浏览器内置页面（edge:// 或 chrome:// 开头），插件无法读取。请切换到普通网页；也可以手动复制内容后到这里粘贴。";
+  }
+  if (/gallery cannot be scripted/i.test(m)) {
+    return "当前是新标签页或扩展商店页面，插件无法在此运行。请切换到普通网页后再提取。";
+  }
+  if (/^data:/i.test(u)) {
+    return "当前是 data: 临时页面，不支持插件注入。请直接粘贴内容转译。";
+  }
+  if (/^file:/i.test(u)) {
+    return "当前是本地文件页面。请到扩展管理页（edge://extensions）找到本插件，打开「允许访问文件网址」后重试；也可以直接粘贴内容。";
+  }
+  if (/Cannot access contents of the page/i.test(m)) {
+    return "插件还没拿到这个页面的访问授权。请先点一下浏览器工具栏上的插件图标（授权当前页面），再按一次刚才的按钮；还不行就关掉侧边栏重新打开。";
+  }
+  return "注入失败原因未识别。请展开底部「服务设置」按「运行诊断」，把结果发给开发者。";
+}
+
+// 是否为 activeTab 授权缺失（自愈授权流程的触发条件）
+function isAuthMissingError(msg) {
+  return /Cannot access contents of the page/i.test(String(msg || ""));
+}
+
+// 自愈授权：注入因授权缺失失败时，给出引导并展示「授权并重试」按钮。
+// 全程读屏可达：状态区播报下一步，焦点落在按钮上，回车即触发系统授权对话框。
+function offerAuthGrant(retryFn) {
+  pendingRetry = retryFn;
+  setStatus("插件没有权限读取这个页面。焦点已在「授权插件读取网页并重试」按钮：按回车后浏览器会弹出授权对话框，请按读屏提示在对话框里确认允许；授权成功后会自动重试刚才的操作。不想授权的话，也可以直接粘贴内容。", "error");
+  const btn = $("auth-grant-btn");
+  btn.hidden = false;
+  btn.focus();
+}
 
 function setStatus(msg, kind) {
   const el = $("status");
@@ -42,6 +82,27 @@ function setStatus(msg, kind) {
   else delete el.dataset.kind;
   // 新状态出现时，上一次断连留下的「一键恢复云端」按钮同步收起，避免旧按钮误导
   $("cloud-reset-btn").hidden = true;
+  $("auth-grant-btn").hidden = true;
+}
+
+function focusStatus() {
+  const el = $("status");
+  el.setAttribute("tabindex", "-1"); // html 里也带了 tabindex，此处双保险
+  el.focus();
+}
+
+// 忙碌状态反馈：按钮进入「处理中」时的统一入口。
+// 旧行为：点击后焦点停在按钮上，按钮随即被禁用，读屏补播「不可用」，
+// 用户分不清操作是否已受理。现改为：按钮文案换成进行中语义 + 状态区
+// 播报 + 焦点移到状态区，读屏直接读到「正在…」而不是「不可用」。
+function enterBusyState(btn, busyText, statusMsg) {
+  if (btn) {
+    btn.textContent = busyText; // Tab 回来摸到的也是明确状态
+    if (btn.hasAttribute("aria-label")) btn.setAttribute("aria-label", busyText);
+    btn.disabled = true;
+  }
+  setStatus(statusMsg);
+  focusStatus();
 }
 
 function looksLikeLatex(text) {
@@ -103,6 +164,16 @@ function currentTranscribeProfile() {
 
 function profileName(p) {
   return p === "unicode_compact" ? "紧凑文本" : "结构朗读";
+}
+
+// 分式读法偏好：structured=「分数，分子是…」（默认）/ compact=「分母 分之 分子」。
+// 讲解链路专用（parse-latex 的 fraction_style 参数），不影响转译风格。
+function currentFractionStyle() {
+  try {
+    const v = localStorage.getItem(FRACTION_STYLE_KEY);
+    if (v === "compact" || v === "structured") return v;
+  } catch (e) { /* 忽略 */ }
+  return "structured";
 }
 
 function radioValue(name, fallback) {
@@ -209,8 +280,9 @@ async function runPrimaryAction() {
     focusTextInput("请粘贴题目、公式或化学式，然后按 Tab 到「转译粘贴的公式」。");
     return;
   }
+  let tab;
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     // 与快捷键同款的选区清洗（selection_reader.js）：裸 toString 会把
     // KaTeX 隐藏读屏层泄进来，导致转译结果一半乱码一半正确
     const [ret] = await chrome.scripting.executeScript({
@@ -224,7 +296,13 @@ async function runPrimaryAction() {
       focusTextInput("没有检测到选中内容。请先选中公式或题目区域后再点主按钮；也可以在此处粘贴文本后开始转译。", "error");
     }
   } catch (e) {
-    focusTextInput("当前页面无法读取选中内容，可能是浏览器内置页面或受限页面。请复制内容后在此处手动粘贴。", "error");
+    // 不再笼统猜「内置页面」：把真实错误分类后给用户可执行的下一步；
+    // 授权缺失走自愈授权流程（一次授权永久生效）
+    if (isAuthMissingError(e && e.message)) {
+      offerAuthGrant(() => runPrimaryAction());
+      return;
+    }
+    focusTextInput("当前页面无法读取选中内容。" + classifyInjectError(e && e.message, tab && tab.url), "error");
   }
 }
 
@@ -303,15 +381,23 @@ async function extractPage() {
   $("candidates").hidden = true;
   $("confirm-box").hidden = true;
   let results;
+  let tab;
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) throw new Error("找不到当前标签页");
     [results] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ["content.js"],
     });
   } catch (e) {
-    setStatus("此页面无法提取（浏览器内置页面或受限页面）。请改用选中发送或手动粘贴。", "error");
+    // 保留真实错误分类：测试用户报「此页面无法提取」时可能实为 activeTab 授权失效，
+    // 笼统提示会让用户误以为页面不支持；授权缺失走自愈授权流程
+    if (isAuthMissingError(e && e.message)) {
+      offerAuthGrant(() => extractPage());
+      return;
+    }
+    setStatus("此页面无法提取。" + classifyInjectError(e && e.message, tab && tab.url)
+      + " 仍无法解决时，展开底部「服务设置」按「运行诊断」，把结果发给开发者。", "error");
     return;
   }
   const found = (results && results.result) || [];
@@ -370,7 +456,12 @@ async function extractPage() {
   });
   candidateItems = found;
   $("candidates").hidden = false;
-  setStatus(`找到 ${found.length} 个公式，已转成中文朗读。按数字键 1 到 ${Math.min(found.length, 9)} 直接选择，或用 Tab 浏览列表。`);
+  // 长列表时数字键只覆盖前 9 条，直接告诉用户用「附近正文」路标定位，
+  // 避免盲用户在几十条里盲目 Tab
+  const numHint = found.length > 9
+    ? `按数字键 1 到 9 可选前 9 条；其余请用 Tab 逐条浏览，每条都带「附近正文」路标，听到熟悉的题干再按回车。`
+    : `按数字键 1 到 ${Math.min(found.length, 9)} 直接选择，或用 Tab 浏览列表。`;
+  setStatus(`找到 ${found.length} 个公式，已转成中文朗读。${numHint}`);
   $("candidates-heading").focus();
 }
 
@@ -400,6 +491,12 @@ function setAnalyzing(on) {
     (id) => ($(id).disabled = on)
   );
   $("cancel-btn").hidden = !on;
+  if (on) {
+    // 焦点若停在刚被禁用的按钮上，读屏会补播「不可用」盖过「正在讲解」提示；
+    // 移到状态区，用户直接听到调用方已播报的进行中语义
+    const active = document.activeElement;
+    if (active && active.tagName === "BUTTON" && active.disabled) focusStatus();
+  }
 }
 
 // ---------------- 转译（第五阶段） ----------------
@@ -554,7 +651,7 @@ async function analyzeLatex(latex, sourceNote, note) {
   try {
     const data = await apiPost(
       "/api/parse-latex",
-      { latex, with_explanation: true, context: pendingContext || undefined },
+      { latex, with_explanation: true, fraction_style: currentFractionStyle(), context: pendingContext || undefined },
       abortCtrl.signal
     );
     if (!data.ok) {
@@ -728,6 +825,11 @@ async function askQuestion() {
     return;
   }
   $("ask-btn").disabled = true;
+  // 焦点若停在刚禁用的「发送追问」上会听到「不可用」；移到状态区听「正在生成」
+  if (document.activeElement === $("ask-btn")) {
+    setStatus("正在提交问题，生成回答…");
+    focusStatus();
+  }
   const slot = $("answer-slot");
   slot.hidden = false;
   slot.textContent = "正在生成回答…";
@@ -950,10 +1052,18 @@ $("copy-all-btn").addEventListener("click", () =>
 // 铁律：任何时刻只有一路声音——自动播放前会先停掉旧音频。
 let aiAudio = null;
 let aiAudioUrl = null;
+// 「听 AI 讲解」的初始 aria-label：恢复默认态时还原，避免忙碌文案残留
+const AI_SPEAK_ARIA = "用 AI 语音朗读公式朗读与一段话总结，再按一次停止";
+function restoreAiSpeakBtn() {
+  const btn = $("ai-speak-btn");
+  btn.textContent = "听 AI 讲解";
+  btn.setAttribute("aria-label", AI_SPEAK_ARIA);
+  btn.disabled = false;
+}
 function stopAiSpeak() {
   if (aiAudio) { aiAudio.pause(); aiAudio = null; }
   if (aiAudioUrl) { URL.revokeObjectURL(aiAudioUrl); aiAudioUrl = null; }
-  $("ai-speak-btn").textContent = "听 AI 讲解";
+  restoreAiSpeakBtn();
 }
 async function playAiExplanation() {
   if (!currentData) return;
@@ -961,8 +1071,8 @@ async function playAiExplanation() {
   const exp = currentData.explanation || {};
   const text = [currentData.speech_text, exp.accessible_summary].filter(Boolean).join("。");
   const btn = $("ai-speak-btn");
-  btn.disabled = true;
-  setStatus("正在合成语音，首次约需几秒…");
+  // 忙碌态：文案与读屏名称同步换成「生成音频中」，焦点移到状态区听完整提示
+  enterBusyState(btn, "生成音频中", "正在生成音频，按钮暂时不可用，请稍候。");
   try {
     const resp = await fetch(`${apiBase()}/api/tts`, {
       method: "POST",
@@ -971,6 +1081,7 @@ async function playAiExplanation() {
     });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
+      restoreAiSpeakBtn();
       setStatus(`${err.error || "语音合成失败。"}请再按一次「听 AI 讲解」重试。`, "error");
       return;
     }
@@ -979,8 +1090,10 @@ async function playAiExplanation() {
     aiAudio.onended = () => { stopAiSpeak(); setStatus("AI 讲解播放完毕。"); };
     await aiAudio.play();
     btn.textContent = "停止 AI 讲解";
+    btn.setAttribute("aria-label", "停止 AI 讲解");
     setStatus("正在播放 AI 语音讲解，再按一次可停止。");
   } catch (e) {
+    restoreAiSpeakBtn();
     setStatus(`语音合成请求出错：${e.message || e}。请检查网络后再按「听 AI 讲解」重试。`, "error");
   } finally {
     btn.disabled = false;
@@ -1004,6 +1117,18 @@ document.querySelectorAll('input[name="explain-voice"]').forEach((r) =>
       setStatus("已切换为自动 AI 语音：讲解完成后自动朗读结构读法与摘要。想中途停下按「停止 AI 讲解」。");
     } else {
       setStatus("已切换为屏幕阅读器直接读：插件不再自动播音，讲解文字由 NVDA 等读屏朗读。");
+    }
+  })
+);
+// 分式读法偏好：切换只影响下一次讲解（重讲要再花几十秒大模型调用，不自动重讲）
+document.querySelectorAll('input[name="fraction-style"]').forEach((r) =>
+  r.addEventListener("change", () => {
+    const v = radioValue("fraction-style", "structured");
+    try { localStorage.setItem(FRACTION_STYLE_KEY, v); } catch (e) { /* 忽略 */ }
+    if (v === "compact") {
+      setStatus("已切换为紧凑分式读法：分式读作「分母 分之 分子」。对下一次讲解生效，已显示的结果不变。");
+    } else {
+      setStatus("已切换为结构分式读法：分式读作「分数，分子是…分母是…，分数结束」。对下一次讲解生效，已显示的结果不变。");
     }
   })
 );
@@ -1080,6 +1205,92 @@ $("cloud-reset-btn").addEventListener("click", async () => {
   }
 });
 
+// 自愈授权：点击后调起浏览器授权对话框（可选权限，仅在注入失败且用户主动按下时申请）。
+// 授权成功后自动重试刚才失败的动作；拒绝则回退到工具栏图标授权/粘贴的指引。
+$("auth-grant-btn").addEventListener("click", async () => {
+  const btn = $("auth-grant-btn");
+  btn.disabled = true;
+  setStatus("正在请求授权。浏览器会弹出授权对话框，询问是否允许插件读取和更改网站数据：请按读屏提示在对话框里按「允许」。授权一次后永久生效。");
+  let granted = false;
+  try {
+    granted = await chrome.permissions.request({ origins: ["<all_urls>"] });
+  } catch (e) {
+    btn.disabled = false;
+    setStatus(`授权请求失败：${e.message || e}。请改用工具栏插件图标在页面上点一下授权，或直接粘贴内容。`, "error");
+    btn.hidden = false; // setStatus 内部会隐藏按钮，失败时重新亮出来供再次尝试
+    btn.focus();
+    return;
+  }
+  btn.hidden = true;
+  btn.disabled = false;
+  if (granted) {
+    setStatus("授权成功，正在重试刚才的操作。");
+    const fn = pendingRetry;
+    pendingRetry = null;
+    if (fn) fn();
+  } else {
+    setStatus("未获得授权。您可以先点一下浏览器工具栏上的插件图标（授权当前页面），再按一次刚才的按钮；也可以直接粘贴内容。", "error");
+  }
+});
+
+$("diag-run-btn").addEventListener("click", () => { runDiagnosis(); });
+$("diag-copy-btn").addEventListener("click", async () => {
+  await copyText($("diag-output").value, "诊断信息");
+});
+
+// ---------------- 问题诊断（远程支持用：生成可复制的纯文本诊断报告）----------------
+async function runDiagnosis() {
+  setStatus("正在运行诊断，请稍候…");
+  const lines = [];
+  lines.push("数学公式无障碍学习助手 诊断信息");
+  lines.push("时间：" + new Date().toLocaleString());
+  lines.push("插件版本：" + chrome.runtime.getManifest().version);
+  lines.push("浏览器：" + navigator.userAgent);
+  let tab;
+  try { [tab] = await chrome.tabs.query({ active: true, currentWindow: true }); } catch (e) { /* 忽略 */ }
+  lines.push("当前页面地址：" + ((tab && tab.url) || "(未知)"));
+  lines.push("当前页面标题：" + ((tab && tab.title) || "(未知)"));
+  let inject = "未测试";
+  if (tab) {
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => true });
+      inject = "注入成功（页面可被插件访问）";
+    } catch (e) {
+      inject = "注入失败：" + classifyInjectError(e && e.message, tab.url)
+        + " | 原始错误：" + (e && e.message || "无");
+    }
+  }
+  lines.push("页面注入测试：" + inject);
+  lines.push("服务地址：" + apiBase() + (apiBase() === DEFAULT_API ? "（默认云端）" : "（自定义）"));
+  let health = "未测试";
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    const resp = await fetch(apiBase() + "/api/health", { headers: authHeaders(), signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!resp.ok) {
+      health = `HTTP ${resp.status}`;
+    } else {
+      health = `连接正常（HTTP ${resp.status}`;
+      try {
+        const d = await resp.json();
+        if (d && d.llm) health += "，大模型可用=" + d.llm.available;
+      } catch (e) { /* 忽略 */ }
+      health += "）";
+    }
+  } catch (e) {
+    health = "连接失败：" + (e && e.message || "无详情");
+  }
+  lines.push("服务连接：" + health);
+  lines.push("转译风格：" + profileName(currentTranscribeProfile()));
+  lines.push("讲解朗读方式：" + (explainVoiceMode() === "tts" ? "自动 AI 语音" : "屏幕阅读器直接读"));
+  const report = lines.join("\n");
+  $("diag-output").value = report;
+  $("diag-box").hidden = false;
+  setStatus("诊断完成，结果已放入只读文本框。按 Tab 到「复制诊断信息」按钮，把结果发给开发者即可。");
+  $("diag-copy-btn").focus();
+}
+
 // 右键菜单 / 快捷键送来的捕获内容
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg && msg.type === "capture" && msg.payload) {
@@ -1101,6 +1312,8 @@ chrome.runtime.onMessage.addListener((msg) => {
   try { $("api-base-input").value = localStorage.getItem(API_KEY) || DEFAULT_API; } catch (e) { /* 忽略 */ }
   const evMode = explainVoiceMode();
   document.querySelectorAll('input[name="explain-voice"]').forEach((r) => { r.checked = r.value === evMode; });
+  const fsMode = currentFractionStyle();
+  document.querySelectorAll('input[name="fraction-style"]').forEach((r) => { r.checked = r.value === fsMode; });
   renderHistory(await loadHistory());
   // 面板打开前触发的捕获（右键/快捷键先于面板加载）
   const obj = await chrome.storage.session.get("pendingCapture");

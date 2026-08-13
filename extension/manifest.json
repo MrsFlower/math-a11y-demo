@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "数学公式无障碍学习助手",
-  "version": "0.7.9",
+  "version": "0.8.3",
   "description": "选中或提取当前页面的公式，转译成读屏友好的纯文本，或获得中文讲解，可追问、可回看。默认连接云端服务，开箱即用；也可在侧边栏「服务设置」改为本机服务。",
   "icons": {
     "16": "icons/icon16.png",
@@ -11,6 +11,7 @@
   },
   "permissions": ["sidePanel", "contextMenus", "storage", "activeTab", "scripting"],
   "host_permissions": ["http://127.0.0.1:8321/*", "https://*.fcapp.run/*"],
+  "optional_host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
   "side_panel": { "default_path": "sidepanel.html" },
   "action": {

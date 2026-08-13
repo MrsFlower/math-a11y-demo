@@ -19,6 +19,11 @@
   const MAX = 60;
   const found = [];
   const seen = new Set();
+  // 公式渲染层/读屏辅助层的统一选择器：上下文截取与纯文本兜底都基于它剥离，
+  // 保证「已被结构化提取器覆盖的段落」不会再被兜底重复捕获（含 KaTeX 隐藏
+  // MathML 层造成的 innerText 双重文本）
+  const ASSISTIVE_MATH_SEL = ".katex-mathml, .katex, mjx-assistive-mml, mjx-container, .MathJax, .MathJax_Preview, annotation, math, img.mwe-math-fallback-image-inline, img.mwe-math-fallback-image-display";
+  const TEX_DELIM = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\$([^$\n]+?)\$/g;
 
   const LATEX_CMD = /\\(?:frac|dfrac|tfrac|sqrt|sum|prod|int|iint|iiint|oint|lim|infty|partial|nabla|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|sigma|omega|phi|psi|mathbb|mathcal|mathrm|mathbf|text|displaystyle|begin|end|left|right|cdot|times|div|pm|mp|le|ge|ne|approx|equiv|over|overline|underline|hat|vec|bar|tilde|prime|sin|cos|tan|log|ln|exp|to|Rightarrow|forall|exists|in|subset|cup|cap)\b/;
   const DOLLAR_SEG = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\$([^$\n]+?)\$/g;
@@ -39,8 +44,17 @@
     return `${el.tagName.toLowerCase()}${cls}`;
   }
 
-  function stripAssistiveMath(root) {
-    root.querySelectorAll(".katex-mathml, mjx-assistive-mml, annotation, script").forEach((n) => n.remove());
+  function stripAssistiveMath(root, forContext) {
+    if (forContext) {
+      // 上下文用途：math/tex 源码 script 是正文的一部分，保留待分隔符提取；
+      // 其余渲染/读屏层全部移除（避免「𝑓 ( 𝑥 ) f(x)」双重文本）
+      root.querySelectorAll(ASSISTIVE_MATH_SEL + ", script").forEach((n) => {
+        const t = n.tagName === "SCRIPT" ? (n.getAttribute("type") || "") : "";
+        if (n.tagName !== "SCRIPT" || !t.startsWith("math/tex")) n.remove();
+      });
+    } else {
+      root.querySelectorAll(ASSISTIVE_MATH_SEL + ", script").forEach((n) => n.remove());
+    }
   }
 
   // 往上找最近的、有足够正文的祖先（段落级），截取其文字作为上下文。
@@ -51,7 +65,7 @@
       node = node.parentElement;
       if (node.tagName === "BODY" || node.tagName === "HTML") break;
       const clone = node.cloneNode(true);
-      stripAssistiveMath(clone);
+      stripAssistiveMath(clone, true);
       const text = compactText(clone.textContent);
       const extra = own && text.includes(own) ? text.length - own.length : text.length;
       if (extra >= 30) return text.slice(0, 400);
@@ -59,10 +73,18 @@
     return "";
   }
 
+  // 孤立符号噪声闸：像 x、n、D、0 这样的单符号片段对「讲解」无价值，
+  // 在真题页上能占掉三成候选；带关系符/结构（x=a、x+y=1、x→0）的短式保留
+  function isTrivialSymbol(text) {
+    const t = (text || "").trim();
+    return t.length <= 3 && !/[=<>≤≥→\\]/.test(t);
+  }
+
   function pushCandidate({ raw, source, kind, el, confidence, extractor, reason }) {
     if (found.length >= MAX) return;
     const normalized = normalizeFormula(raw);
     if (!normalized || normalized.length > 2000 || seen.has(normalized)) return;
+    if (kind === "latex" && isTrivialSymbol(normalized)) return;
     seen.add(normalized);
     found.push({
       latex: normalized,
@@ -193,8 +215,32 @@
 
   function extractPlainTextMath() {
     document.querySelectorAll("p, li").forEach((para) => {
-      const text = compactText(para.innerText || para.textContent);
-      if (!text || text.length > 500 || !MATH_MARK.test(text)) return;
+      // 先剥离渲染/读屏层再判断：段落里的公式已被 annotation/script/MathML
+      // 等结构化提取器收走，剩下的若不含数学特征就不再重复捕获整段
+      // （旧逻辑直接取整段 innerText，会把 KaTeX 隐藏读屏层的双重文本
+      // 和原题干一起当成新公式）；剥离后残留的 $...$ 源码按分隔符抠出，
+      // 补回「混排未渲染公式」的漏抓
+      const clone = para.cloneNode(true);
+      stripAssistiveMath(clone, true);
+      const text = compactText(clone.textContent);
+      if (!text || text.length > 500) return;
+      let hasSeg = false;
+      let match;
+      TEX_DELIM.lastIndex = 0;
+      while ((match = TEX_DELIM.exec(text)) !== null) {
+        hasSeg = true;
+        pushCandidate({
+          raw: match[1] || match[2] || match[3],
+          source: "正文中的 $ 分隔符公式源码",
+          kind: "latex",
+          confidence: "medium",
+          extractor: "plain-text-tex-delimiter",
+          reason: "dollar delimiter in paragraph",
+          el: para,
+        });
+      }
+      if (hasSeg) return;
+      if (!MATH_MARK.test(text)) return;
       pushCandidate({
         raw: text,
         source: "正文中的纯文本公式",
